@@ -1,10 +1,62 @@
 import {Pool} from 'pg';
-import {PGlite} from '@electric-sql/pglite';
-let pool,local;
-export async function db(){if(process.env.DATABASE_URL){pool ||= new Pool({connectionString:process.env.DATABASE_URL,max:5});return pool}if(process.env.VERCEL)throw Error('DATABASE_URL is required on Vercel. Connect a Postgres database.');local ||= new PGlite(process.env.STAR_MART_DATA_DIR||'./.data');return local}
-export async function tx(fn){const database=await db();if(database.connect){const c=await database.connect();try{await c.query('BEGIN');let value=await fn(c);await c.query('COMMIT');return value}catch(e){await c.query('ROLLBACK');throw e}finally{c.release()}}await database.query('BEGIN');try{let value=await fn(database);await database.query('COMMIT');return value}catch(e){await database.query('ROLLBACK');throw e}}
+
+let pool, local;
+
+export async function db() {
+  if (process.env.DATABASE_URL) {
+    pool ||= new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: process.env.VERCEL ? 1 : 5
+    });
+    return pool;
+  }
+
+  if (process.env.VERCEL) {
+    throw Error('DATABASE_URL is required on Vercel. Connect a Postgres database.');
+  }
+
+  if (!local) {
+    const {PGlite} = await import('@electric-sql/pglite');
+    local = new PGlite(process.env.STAR_MART_DATA_DIR || './.data');
+  }
+  return local;
+}
+
+export async function tx(fn) {
+  const database = await db();
+  if (database.connect) {
+    const c = await database.connect();
+    try {
+      await c.query('BEGIN');
+      const value = await fn(c);
+      await c.query('COMMIT');
+      return value;
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      c.release();
+    }
+  }
+
+  await database.query('BEGIN');
+  try {
+    const value = await fn(database);
+    await database.query('COMMIT');
+    return value;
+  } catch (e) {
+    await database.query('ROLLBACK');
+    throw e;
+  }
+}
+
 let initialized;
-export function init(){initialized ||= (async()=>{const d=await db();for (const statement of `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+
+export function init() {
+  initialized ||= (async () => {
+    const d = await db();
+
+    for (const statement of `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS admin_identities (uid TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at TIMESTAMPTZ NOT NULL);
 CREATE TABLE IF NOT EXISTS vendors (id TEXT PRIMARY KEY,name TEXT NOT NULL,contact TEXT NOT NULL DEFAULT '',phone TEXT NOT NULL DEFAULT '',email TEXT NOT NULL DEFAULT '',address TEXT NOT NULL DEFAULT '',terms TEXT NOT NULL DEFAULT '',tax_id TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
@@ -24,5 +76,23 @@ CREATE TABLE IF NOT EXISTS store_accounts (id TEXT PRIMARY KEY,name TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS account_sessions (token_hash TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES store_accounts(id),expires_at TIMESTAMPTZ NOT NULL);
 CREATE TABLE IF NOT EXISTS vendor_applications (id TEXT PRIMARY KEY,business TEXT NOT NULL,contact TEXT NOT NULL,email TEXT NOT NULL,phone TEXT NOT NULL,address TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Pending','Approved','Rejected')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS vendor_payments (id TEXT PRIMARY KEY,vendor_id TEXT NOT NULL REFERENCES vendors(id),amount_paisa BIGINT NOT NULL CHECK(amount_paisa>0),method TEXT NOT NULL CHECK(method IN ('Cash','Bank transfer','Card')),reference TEXT NOT NULL DEFAULT '',note TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS product_images (product_id TEXT PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,data BYTEA NOT NULL,mime TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`.split(';').map(x=>x.trim()).filter(Boolean)) await d.query(statement);await d.query('ALTER TABLE purchases ADD COLUMN IF NOT EXISTS paid_paisa BIGINT NOT NULL DEFAULT 0');})();return initialized}
-export async function close(){if(pool)await pool.end();if(local)await local.close();pool=null;local=null;initialized=null}
+CREATE TABLE IF NOT EXISTS product_images (product_id TEXT PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,data BYTEA NOT NULL,mime TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`
+      .split(';')
+      .map(x => x.trim())
+      .filter(Boolean)) {
+      await d.query(statement);
+    }
+
+    await d.query('ALTER TABLE purchases ADD COLUMN IF NOT EXISTS paid_paisa BIGINT NOT NULL DEFAULT 0');
+  })();
+
+  return initialized;
+}
+
+export async function close() {
+  if (pool) await pool.end();
+  if (local) await local.close();
+  pool = null;
+  local = null;
+  initialized = null;
+}
