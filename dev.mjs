@@ -1,0 +1,11 @@
+import {createServer} from 'node:http';
+import {fileURLToPath} from 'node:url';
+import {dirname} from 'node:path';
+import {existsSync} from 'node:fs';
+process.chdir(dirname(fileURLToPath(import.meta.url)));
+if(existsSync('.env.local'))process.loadEnvFile('.env.local');
+import {createServer as viteServer} from 'vite';
+import {handle} from './server/api.mjs';
+const api=createServer(handle);api.listen(8787,()=>console.log('API http://localhost:8787'));
+const vite=await viteServer({configFile:'vite.config.js',server:{host:'127.0.0.1'}});await vite.listen();vite.printUrls();
+for(let signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{await vite.close();api.close();process.exit(0)});
