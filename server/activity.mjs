@@ -1,0 +1,4 @@
+import {db} from './db.mjs';
+const allowed=new Set(['customer_orders','products','product_images','stock_movements','purchases','sales','receipts','adjustments','expenses','vendors','vendor_applications','vendor_payments','customer_accounts','customer_credit_payments','store_accounts','loyalty_entries']);
+export async function activityFeed(limit=150){let r=await (await db()).query('SELECT id,entity,entity_id,action,actor,created_at FROM activity_events ORDER BY id DESC LIMIT $1',[Math.max(1,Math.min(500,Number(limit)||150))]);return r.rows}
+export async function recordActivity(c,entity,entityId,action){if(!allowed.has(entity))throw Error('Unknown activity type');await c.query('INSERT INTO activity_events(entity,entity_id,action) VALUES($1,$2,$3)',[entity,String(entityId),String(action).slice(0,120)])}
