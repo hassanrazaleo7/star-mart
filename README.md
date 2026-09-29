@@ -51,3 +51,9 @@ Money is stored as integer paisa, quantities as thousandths of a unit. Stock = o
 ## Import old data
 
 From the old static manager, use **Export backup**. On the new admin, sign in and choose **Import old backup** while its database is empty. The transaction is atomic and preserves products, vendors, purchases, sales, adjustments and expenses. Keep both the old JSON and database backups. The new **Export** is an operational JSON data export and is not a database restore mechanism.
+
+## Account screens
+
+Customer signup: `/signup`; customer sign in: `/login`; customer dashboard: `/account`. Vendor applications start at `/become-a-vendor`; the store owner approves requests in `/admin` → Vendors and shares `/vendor` credentials. Staff use `/staff`. The owner uses `/admin` with the owner password. Registered customers, outstanding credit and points appear in `/admin` → Customers.
+
+Google and Facebook customer sign in use Firebase Authentication. To enable them, set `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` at build time and `FIREBASE_PROJECT_ID` on the server. Enable Google and Facebook providers plus your Vercel domain in Firebase Auth. Facebook additionally needs its Meta app ID/secret and OAuth redirect configuration. The backend verifies the Firebase ID token and maps the provider UID to a Neon customer account, then issues the same customer session used by the dashboard. Existing password accounts are not automatically merged by matching email; sign in with the original method. Email/password signup works without Firebase.

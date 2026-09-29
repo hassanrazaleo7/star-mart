@@ -13,10 +13,10 @@ export default function CustomerDashboard(){
   }
   useEffect(()=>{load()},[]);
   useLiveRefresh(load);
-  async function logout(){await fetch('/api/customer/logout',{method:'POST',credentials:'same-origin'});location.href='/shop'}
+  async function logout(){await fetch('/api/customer/logout',{method:'POST',credentials:'same-origin'});location.href='/login'}
   const month=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Karachi',year:'numeric',month:'2-digit'}).format(new Date()),thisMonth=data?.monthly.find(x=>x.month===month),due=data?.bills.filter(x=>x.duePaisa>0)||[];
   return <div className="customer-app"><header><div className="customer-wrap customer-header"><a href="/shop"><img src="/logo.png" alt="Star Mart"/></a><nav><a href="/shop">Shop products</a><a href="/shop#products">Browse categories</a>{data&&<button onClick={logout}><LogOut size={16}/> Sign out</button>}</nav></div></header>
-    {loading?<main className="customer-wrap customer-loading">Loading your dashboard…</main>:error?<main className="customer-wrap customer-empty"><h1>Welcome to Star Mart</h1><p>Sign in to view your purchases, credit balance and rewards.</p><a href="/shop?signup=1">Create account or sign in <ArrowRight size={18}/></a><small>{error==='Please sign in'?'':error}</small></main>:<main className="customer-wrap">
+    {loading?<main className="customer-wrap customer-loading">Loading your dashboard…</main>:error?<main className="customer-wrap customer-empty"><h1>Welcome to Star Mart</h1><p>Sign in to view your purchases, credit balance and rewards.</p><a href="/signup">Create account or sign in <ArrowRight size={18}/></a><small>{error==='Please sign in'?'':error}</small></main>:<main className="customer-wrap">
       <section className="customer-hero"><div><span>MY STAR MART</span><h1>Hello, {data.customer.name.split(' ')[0]} 👋</h1><p>Your shopping, bills and rewards in one place.</p></div><a href="/shop#products">Continue shopping <ArrowRight size={18}/></a></section>
       <section className="customer-stats" aria-label="Account summary">
         <article><ShoppingBag/><span>Total shopping</span><strong>{money(data.summary.totalSpendPaisa)}</strong><small>{data.summary.billCount} completed counter bills</small></article>

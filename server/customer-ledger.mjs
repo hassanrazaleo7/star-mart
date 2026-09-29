@@ -50,7 +50,12 @@ export async function customerOverview(customerId){
 }
 export async function listCustomers(){
   const c=await db();
-  const r=await c.query('SELECT id,name,email,phone FROM customer_accounts ORDER BY name');
+  const r=await c.query(`SELECT a.id,a.name,a.email,a.phone,
+    (SELECT COUNT(*)::int FROM receipts r WHERE r.customer_id=a.id) AS bill_count,
+    (SELECT COALESCE(SUM(r.total_paisa),0) FROM receipts r WHERE r.customer_id=a.id) AS total_spend_paisa,
+    (SELECT COALESCE(SUM(GREATEST(0,r.total_paisa-LEAST(r.total_paisa,r.received_paisa)-COALESCE((SELECT SUM(cp.amount_paisa) FROM customer_credit_payments cp WHERE cp.receipt_id=r.id),0))),0) FROM receipts r WHERE r.customer_id=a.id) AS outstanding_paisa,
+    (SELECT COALESCE(SUM(l.points),0) FROM loyalty_entries l WHERE l.customer_id=a.id) AS points
+    FROM customer_accounts a ORDER BY a.name`);
   return r.rows;
 }
 export async function collectCredit(body){

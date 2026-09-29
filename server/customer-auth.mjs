@@ -11,6 +11,6 @@ export async function firebaseIdentity(req){
   let user;
   try{user=await getAuth().verifyIdToken(token)}catch{throw Object.assign(new Error('Session expired. Sign in again.'),{status:401})}
   if(user.firebase?.sign_in_provider==='password'&&!user.email_verified)throw Object.assign(new Error('Verify your email before ordering'),{status:403});
-  return {id:user.uid,email:user.email||'',phone:user.phone_number||'',name:user.name||user.email?.split('@')[0]||'Customer'};
+  return {id:user.uid,email:user.email||'',phone:user.phone_number||'',name:user.name||user.email?.split('@')[0]||'Customer',provider:user.firebase?.sign_in_provider||''};
 }
 export const customerFrom=firebaseIdentity;

@@ -25,8 +25,13 @@ test('customer signup, protected orders, login and logout persist on the databas
     const cookie=signup.headers['set-cookie'].split(';')[0];
     assert.match(cookie,/^sm_customer=/);
     assert.equal((await call('/customer/me')).status,401);
+    assert.equal((await call('/customer/social','POST',{provider:'google.com'})).status,401);
     assert.equal((await call('/customer/me','GET',null,cookie)).body.user.email,'hassan@example.com');
-    assert.equal((await call('/customer/signup','POST',{name:'Again',email:'hassan@example.com',password:'strong-pass-123'})).status,409);
+    const customers=await call('/customers','GET',null,cookie);
+    assert.equal(customers.status,401);
+    const duplicate=await call('/customer/signup','POST',{name:'Again',email:'hassan@example.com',password:'strong-pass-123'});
+    assert.equal(duplicate.status,409);
+    assert.equal(duplicate.body.error,'This email already has an account. Please sign in.');
     const database=await db();
     await database.query("INSERT INTO products(id,name,price_paisa,cost_paisa) VALUES('p1','Rice',12500,8000)");
     await database.query("INSERT INTO stock_movements(id,product_id,qty_milli,kind) VALUES('m1','p1',3000,'opening')");
