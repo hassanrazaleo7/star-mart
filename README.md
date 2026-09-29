@@ -1,22 +1,23 @@
 # Star Mart — storefront and store operations
 
-The customer shop at `/shop` restores the original Star Mart grocery design: original hero and produce artwork, header, categories, promotion, product cards and basket. The React admin at `/` manages products, POS/barcodes, stock, purchases, vendors, adjustments, customer orders, expenses and reports. Both read the same PostgreSQL data. The supplied logo lives at `public/logo.png`.
+The customer shop at `/shop` uses Star Mart artwork, categories, featured banners, live product cards and basket. The React admin at `/admin` manages products, POS/barcodes, stock, purchases, vendors, adjustments, customer orders, expenses and reports. Both read the same PostgreSQL data. The supplied logo lives at `public/logo.png`.
 
 ## Run in VS Code
 
 1. Extract this folder, open it in VS Code, run `npm install` and `npm run dev`.
 2. Open the Vite URL shown in Terminal (usually `http://localhost:5173`). First visit `/admin` to create the owner account with a 6+ character password.
-3. Add a product and opening stock. Visit `/shop` to see it in the customer storefront. `/` opens the customer signup view. Existing shop tabs refresh every 15 seconds or on focus.
+3. Add a product and opening stock. Visit `/shop` to see it in the customer storefront. `/` opens the customer signup view. Open shop/admin/vendor tabs check a lightweight change version every 3 seconds while visible, then refresh data after a database change. This is near-live synchronization, not WebSocket push.
 4. Local development uses embedded PGlite in `.data/` by default. **Preserve `.data/` when updating code**; it holds your admin account and all store records.
 
-## Customer sign-in setup
+## Customer sign-in and account dashboard
 
-Customer accounts and optional linked owner sign-in use Firebase Authentication. Copy `.env.example` to `.env.local` and fill the Firebase Web App values plus `FIREBASE_PROJECT_ID` (same project ID). In Firebase Console, enable **Email/Password**, **Google**, and **Phone** under Authentication > Sign-in method, and authorize your development/deployment domains. Restart `npm run dev` after editing environment variables. The server verifies Firebase ID tokens before accepting orders; an unverified email/password account cannot order.
+Customer email/password accounts are stored in Neon PostgreSQL (or local PGlite in development). Customers create an account from the shop and can sign in, place orders, and open **/account**. Passwords are salted and hashed; customer sessions use HttpOnly cookies. Optional Google and SMS sign-in require a separate Firebase setup. The account dashboard currently supports the built-in email/password account; Google/phone identities do not automatically link to a Neon customer account.
 
-- Google sign-in opens a Firebase popup.
-- Email sign-up sends a verification email; password reset sends an email.
-- Mobile sign-in uses reCAPTCHA and a real SMS OTP. Use E.164 format such as `+923001234567`. Firebase SMS verification requires a billing-enabled plan and is billed per SMS; check Firebase's current pricing and limits before enabling Phone. For safe development, use Firebase's configured fictional test phone numbers; never ship a shared test code to users.
-- Without Firebase configuration, the storefront catalog works, while customer login and ordering remain unavailable. Admin owner password login at `/admin` is separate and still works. Customer signup requires Firebase configuration; without it, the signup form explains the missing setup. After signing in as owner, use **Link sign-in** in the admin header to attach a verified Google or mobile identity. Only linked identities can subsequently open admin; a random customer account has no admin rights.
+A customer dashboard shows linked counter receipts, item quantities/prices, this month's spending, monthly totals, online order status, outstanding credit, credit payment history and Star Points. At POS, staff select a **registered customer** to link the bill. Walk-in bills remain anonymous and do not appear in a customer account; historical unlinked receipts cannot be assigned safely by matching a name. Credit sales require a selected customer. Staff record partial or full credit collections against a specific bill.
+
+**Rewards:** On a fully paid registered-customer receipt, earn one point per whole Rs 100, capped so the future Rs 0.50 per point liability is no more than 10% of recorded gross profit. Products need recorded purchase costs; unknown costs do not earn points. Credit purchases earn only after full settlement and online orders after paid fulfillment. A customer may redeem exactly 100 previously earned points for Rs 50 on a later POS bill of at least Rs 3,000, once per bill; no stacking with a manual discount. Redemption requires recorded costs and at least 8% gross margin after the reward. The server checks all rules inside checkout, with an audit ledger. This limits discount exposure but does not guarantee net profit after rent, spoilage or overhead. The POS does not yet implement returns/refunds or automatic point reversal.
+
+If you also want Google or SMS OTP, copy `.env.example` to `.env.local` and fill Firebase Web App values plus `FIREBASE_PROJECT_ID`. Enable those providers and authorize your domain in Firebase. SMS usually needs Firebase billing and must be configured separately. Email/password accounts and their dashboard do **not** require Firebase.
 
 ## Store panels and vendor workflow
 
@@ -31,9 +32,15 @@ Customer accounts and optional linked owner sign-in use Firebase Authentication.
 
 A signed-in customer adds products to the basket and requests pickup or delivery with a contact number. Placing an order reserves available stock atomically. In admin **Customer orders**, cancelling releases stock; fulfilling requires explicit confirmation that payment was collected, then records the sale and deducts stock. No online card charge or courier dispatch is claimed.
 
+## Neon connection and live synchronization
+
+Local development uses `.data/` by default. To connect a Neon database locally, create `.env.local` with a **pooled Neon PostgreSQL** URL as `DATABASE_URL=postgresql://...?...sslmode=require`; never commit that file. Restart `npm run dev`. On the first API request the app creates its SQL tables. Once connected, all devices using that same Neon URL share products, sales, vendor accounts and orders. The previously created local `.data/` records are **not automatically copied** to Neon. Keep a backup and import supported legacy data separately, or start fresh.
+
+The browser checks `/api/live/version` every 3 seconds when visible and fetches new records only after a change. Own actions refresh immediately. This normally shows other devices' changes within a few seconds; it is polling, not guaranteed instantaneous server push. More simultaneous users mean more requests and may exceed free hosting limits.
+
 ## Vercel deployment
 
-Upload this folder to your own GitHub repository, import it into Vercel as Vite, and connect Neon through Vercel Marketplace, then set the Neon pooled PostgreSQL URL as `DATABASE_URL` (ensure `sslmode=require`). The root directory should be the folder containing this README and `package.json`. Set framework preset **Vite** and keep the `vercel.json` rewrites. Add the Firebase variables from `.env.example` to the Vercel environment and authorize the deployed domain in Firebase Authentication. The app refuses ephemeral local database use on Vercel. Configure database backups with your PostgreSQL provider. `npm run build` verifies the frontend and `npm test` runs calculation, stock, import and order tests.
+Upload this folder to your own GitHub repository, import it into Vercel as Vite, and connect Neon through Vercel Marketplace, then set the Neon pooled PostgreSQL URL as `DATABASE_URL` (ensure `sslmode=require`). The root directory should be the folder containing this README and `package.json`. Set framework preset **Vite** and keep the `vercel.json` rewrites. Firebase variables are optional for Google/mobile sign-in; Neon email/password signup and the customer dashboard work without Firebase. The app refuses ephemeral local database use on Vercel. Configure database backups with your PostgreSQL provider. `npm run build` verifies the frontend and `npm test` runs calculation, stock, import and order tests.
 
 The supplied ZIP is a MongoDB-based warehouse reference. Its MongoDB records and unused warehouse modules were not copied. The linked `arnobt78/Warehouse-Stock-Inventory-Management-System--NextJS-FullStack` is an external reference with broader warehouse and multi-role features. This Star Mart app is an independent implementation. It does not include Stripe, warehouse transfers, invoice PDF, tax compliance or shipping integration.
 
