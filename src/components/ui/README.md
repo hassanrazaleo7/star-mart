@@ -1,0 +1,1 @@
+shadcn/ui new-york-v4 components from https://github.com/shadcn-ui/ui/tree/main/apps/v4/registry/new-york-v4/ui (MIT). Converted from TypeScript to JSX. cn and component import paths adapted for Star Mart; portal stacking customized. Components are owned source files, not a runtime shadcn package.
