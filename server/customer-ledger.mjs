@@ -28,7 +28,7 @@ export async function customerOverview(customerId){
     c.query('SELECT * FROM receipts WHERE customer_id=$1 ORDER BY created_at DESC',[customerId]),
     c.query('SELECT * FROM customer_credit_payments WHERE customer_id=$1 ORDER BY created_at DESC',[customerId]),
     c.query('SELECT * FROM loyalty_entries WHERE customer_id=$1 ORDER BY created_at DESC',[customerId]),
-    c.query('SELECT id,total_paisa,status,fulfillment,created_at FROM customer_orders WHERE customer_uid=$1 ORDER BY created_at DESC LIMIT 100',[customerId])
+    c.query("SELECT o.id,o.total_paisa,o.status,o.fulfillment,o.created_at,o.updated_at,o.payment_method,o.payment_status,(SELECT r.id FROM receipts r WHERE r.customer_id=o.customer_uid AND r.note='Order '||o.id LIMIT 1) receipt_id FROM customer_orders o WHERE o.customer_uid=$1 ORDER BY o.created_at DESC LIMIT 100",[customerId])
   ]);
   if(!account.rows.length)throw fail('Customer not found',404);
   const ids=receipts.rows.map(r=>r.id);
