@@ -1,0 +1,6 @@
+import {db} from './db.mjs';
+const keys=['phone','address','hours','accountName','jazzcash','easypaisa','bank','deliveryNote'];
+const defaults={phone:'',address:'',hours:'',accountName:'Star Mart',jazzcash:process.env.VITE_JAZZCASH_ACCOUNT||'',easypaisa:process.env.VITE_EASYPAISA_ACCOUNT||'',bank:process.env.VITE_BANK_ACCOUNT||'',deliveryNote:'The store confirms delivery coverage and timing before dispatch.'};
+export async function settingsInit(d){await d.query('CREATE TABLE IF NOT EXISTS store_settings(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())')}
+export async function storeSettings(){let r=await (await db()).query('SELECT key,value FROM store_settings');return {...defaults,...Object.fromEntries(r.rows.map(x=>[x.key,x.value]))}}
+export async function saveSettings(c,b){for(const key of keys){let value=String(b[key]??'').trim();if(value.length>500)throw Object.assign(new Error('Store detail is too long'),{status:400});await c.query('INSERT INTO store_settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()',[key,value])}await c.query("INSERT INTO activity_events(entity,entity_id,action,actor) VALUES('store_settings','store','UPDATE','Owner')");return {ok:true}}
