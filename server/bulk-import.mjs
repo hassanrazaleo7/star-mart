@@ -1,6 +1,6 @@
 import {tx} from './db.mjs';
 import {id,passwordHash} from './auth.mjs';
-import {paisa,milli} from './money.mjs';
+import {paisa,wholeQuantity as milli} from './money.mjs';
 const fail=message=>Object.assign(new Error(message),{status:400});
 const clean=(v,max=250)=>String(v??'').trim().slice(0,max);
 const categories=new Set(['Fruits','Vegetables','Dairy & Eggs','Bakery','Meat & Poultry','Fish & Seafood','Rice & Grains','Flour & Baking','Pulses & Lentils','Cooking Oil & Ghee','Spices & Condiments','Tea & Coffee','Beverages','Snacks & Sweets','Frozen Foods','Canned & Packaged','Personal Care','Household Cleaning','Baby Care','Pet Supplies','Other']);
