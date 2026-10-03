@@ -46,3 +46,11 @@ body{color:var(--star-ink)}button,a,input,select,textarea{font-family:inherit}bu
 .vp-side nav button em,.sm-premium .sidebar nav button em{background:#ffffff24!important;color:#fff!important}
 .vp-side .vp-label,.vp-side .vp-bottom strong,.vp-side .vp-bottom span,.vp-side .vp-bottom button,.sm-premium .side-label,.sm-premium .profile strong,.sm-premium .profile small{color:#fff!important}
 .vp-side .vp-bottom button:hover{background:#fc2600!important;color:#fff!important}
+
+/* Vendor sign-in: readable brand colours over the grocery photograph. */
+.sm-portal.sm-vendor .sm-auth-scene{background-image:linear-gradient(90deg,rgba(255,253,247,.96) 0%,rgba(255,253,247,.90) 37%,rgba(255,253,247,.74) 52%,rgba(255,253,247,0) 70%),url('/vendor-grocery.png')}
+.sm-portal.sm-vendor .sm-auth-copy{position:relative;text-shadow:none}
+.sm-portal.sm-vendor .sm-auth-copy h1{color:#00745c}
+.sm-portal.sm-vendor .sm-auth-copy h1 em{color:#fc2600}
+.sm-portal.sm-vendor .sm-auth-copy .sm-eyebrow,.sm-portal.sm-vendor .sm-auth-copy p{color:#005440}
+@media(max-width:800px){.sm-portal.sm-vendor .sm-auth-copy{background:rgba(255,253,247,.96)}}
