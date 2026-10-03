@@ -4,7 +4,7 @@ import {Boxes,ShoppingBag,Truck,Wallet,ClipboardList,LogOut,Plus,Upload,RefreshC
 import './vendor.css';
 import {useLiveRefresh} from './live.js';
 const money=n=>'Rs '+(Number(n||0)/100).toLocaleString('en-PK',{maximumFractionDigits:2});
-const qty=n=>(Number(n||0)/1000).toLocaleString('en-PK',{maximumFractionDigits:3});
+const qty=n=>Math.round(Number(n||0)/1000).toLocaleString('en-PK',{maximumFractionDigits:0});
 const when=v=>new Date(v).toLocaleString('en-PK',{dateStyle:'medium',timeStyle:'short'});
 const cats=['Fruits','Vegetables','Dairy & Eggs','Bakery','Meat & Poultry','Fish & Seafood','Rice & Grains','Flour & Baking','Pulses & Lentils','Cooking Oil & Ghee','Spices & Condiments','Tea & Coffee','Beverages','Snacks & Sweets','Frozen Foods','Canned & Packaged','Personal Care','Household Cleaning','Baby Care','Pet Supplies','Other'];
 async function request(path,method='GET',payload){let r=await fetch('/api'+path,{method,credentials:'same-origin',headers:payload?{'content-type':'application/json'}:{},body:payload?JSON.stringify(payload):undefined}),j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
