@@ -1,477 +1,191 @@
 export const GROCERY_TAXONOMY = [
   {
-    "id": "atta-flour-grains",
-    "name": "Atta, Flour & Grains",
-    "group": "Pantry",
+    "id": "grocery-staples",
+    "name": "Grocery Staples",
     "icon": "Wheat",
-    "items": [
-      "Atta",
-      "Maida",
-      "Besan",
-      "Suji",
-      "Corn Flour"
-    ]
-  },
-  {
-    "id": "rice-pulses-daal",
-    "name": "Rice & Pulses (Daal)",
-    "group": "Pantry",
-    "icon": "Bean",
-    "items": [
-      "Basmati Rice",
-      "Sella Rice",
-      "Masoor",
-      "Moong",
-      "Chana",
-      "Mash",
-      "Dal Chana"
-    ]
+    "items": []
   },
   {
     "id": "cooking-oil-ghee",
     "name": "Cooking Oil & Ghee",
-    "group": "Pantry",
     "icon": "Droplets",
-    "items": [
-      "Cooking Oil",
-      "Banaspati Ghee",
-      "Olive Oil",
-      "Coconut Oil"
-    ]
+    "items": []
   },
   {
-    "id": "spices-masala",
-    "name": "Spices & Masala",
-    "group": "Pantry",
+    "id": "spices-sauces",
+    "name": "Spices & Sauces",
     "icon": "CookingPot",
-    "items": [
-      "Salt",
-      "Red Chilli",
-      "Turmeric",
-      "Coriander",
-      "Garam Masala",
-      "Biryani Masala"
-    ]
+    "items": []
   },
   {
-    "id": "sugar-salt-sweeteners",
-    "name": "Sugar, Salt & Sweeteners",
-    "group": "Pantry",
-    "icon": "Cuboid",
-    "items": [
-      "Sugar",
-      "Salt",
-      "Icing Sugar",
-      "Brown Sugar",
-      "Jaggery",
-      "Artificial Sweeteners"
-    ]
-  },
-  {
-    "id": "tea-coffee-beverages",
-    "name": "Tea, Coffee & Beverages",
-    "group": "Food & drinks",
+    "id": "drinks-tea-coffee",
+    "name": "Drinks, Tea & Coffee",
     "icon": "Coffee",
-    "items": [
-      "Tea",
-      "Green Tea",
-      "Coffee",
-      "Juices",
-      "Soft Drinks",
-      "Energy Drinks"
-    ]
+    "items": []
   },
   {
-    "id": "biscuits-cookies-wafers",
-    "name": "Biscuits, Cookies & Wafers",
-    "group": "Food & drinks",
-    "icon": "Cookie",
-    "items": [
-      "Biscuits",
-      "Cookies",
-      "Cream Biscuits",
-      "Wafers",
-      "Rusks"
-    ]
-  },
-  {
-    "id": "chocolates-confectionery",
-    "name": "Chocolates & Confectionery",
-    "group": "Food & drinks",
-    "icon": "Candy",
-    "items": [
-      "Chocolates",
-      "Candies",
-      "Toffees",
-      "Chewing Gum",
-      "Lollipops"
-    ]
-  },
-  {
-    "id": "breakfast-cereals",
-    "name": "Breakfast & Cereals",
-    "group": "Pantry",
-    "icon": "Sandwich",
-    "items": [
-      "Corn Flakes",
-      "Cereals",
-      "Oats",
-      "Jam",
-      "Honey",
-      "Peanut Butter"
-    ]
-  },
-  {
-    "id": "noodles-pasta-sauces",
-    "name": "Noodles, Pasta & Sauces",
-    "group": "Pantry",
-    "icon": "Utensils",
-    "items": [
-      "Noodles",
-      "Pasta",
-      "Ketchup",
-      "Mayonnaise",
-      "Chilli Sauce",
-      "Soy Sauce"
-    ]
-  },
-  {
-    "id": "canned-packaged-foods",
-    "name": "Canned & Packaged Foods",
-    "group": "Pantry",
-    "icon": "Package",
-    "items": [
-      "Canned Fruits",
-      "Canned Vegetables",
-      "Beans",
-      "Tuna",
-      "Packaged Foods"
-    ]
-  },
-  {
-    "id": "frozen-foods",
-    "name": "Frozen Foods",
-    "group": "Fresh & chilled",
-    "icon": "Snowflake",
-    "items": [
-      "Frozen Chicken",
-      "Nuggets",
-      "Kebabs",
-      "Samosas",
-      "Fries",
-      "Frozen Vegetables"
-    ]
-  },
-  {
-    "id": "dairy-chilled-products",
-    "name": "Dairy & Chilled Products",
-    "group": "Fresh & chilled",
+    "id": "milk-dairy",
+    "name": "Milk & Dairy",
     "icon": "Milk",
-    "items": [
-      "Milk",
-      "Yogurt",
-      "Butter",
-      "Cheese",
-      "Cream",
-      "Eggs"
-    ]
+    "items": []
   },
   {
-    "id": "bread-bakery",
-    "name": "Bread & Bakery",
-    "group": "Fresh & chilled",
+    "id": "bakery-breakfast",
+    "name": "Bakery & Breakfast",
     "icon": "Croissant",
-    "items": [
-      "Bread",
-      "Buns",
-      "Cakes",
-      "Patties",
-      "Bakery Snacks"
-    ]
+    "items": []
   },
   {
-    "id": "snacks-namkeen",
-    "name": "Snacks & Namkeen",
-    "group": "Food & drinks",
-    "icon": "Popcorn",
-    "items": [
-      "Chips",
-      "Nimco",
-      "Popcorn",
-      "Nuts",
-      "Namkeen"
-    ]
+    "id": "snacks-confectionery",
+    "name": "Snacks & Confectionery",
+    "icon": "Cookie",
+    "items": []
   },
   {
     "id": "dry-fruits-nuts",
     "name": "Dry Fruits & Nuts",
-    "group": "Food & drinks",
     "icon": "Nut",
-    "items": [
-      "Almonds",
-      "Cashews",
-      "Pistachios",
-      "Walnuts",
-      "Raisins",
-      "Dates"
-    ]
+    "items": []
   },
   {
-    "id": "fresh-fruits-vegetables",
-    "name": "Fresh Fruits & Vegetables",
-    "group": "Fresh & chilled",
+    "id": "fruits-vegetables",
+    "name": "Fruits & Vegetables",
     "icon": "Apple",
-    "items": [
-      "Seasonal Fruits",
-      "Vegetables",
-      "Herbs",
-      "Salad Items"
-    ]
+    "items": []
   },
   {
-    "id": "baby-care",
-    "name": "Baby Care",
-    "group": "Care & family",
+    "id": "frozen-instant-foods",
+    "name": "Frozen & Instant Foods",
+    "icon": "Snowflake",
+    "items": []
+  },
+  {
+    "id": "baby-care-nutrition",
+    "name": "Baby Care & Nutrition",
     "icon": "Baby",
-    "items": [
-      "Baby Milk",
-      "Diapers",
-      "Wipes",
-      "Baby Food",
-      "Baby Shampoo",
-      "Baby Lotion"
-    ]
+    "items": []
   },
   {
-    "id": "personal-care",
-    "name": "Personal Care",
-    "group": "Care & family",
+    "id": "personal-care-hygiene",
+    "name": "Personal Care & Hygiene",
     "icon": "Sparkles",
-    "items": [
-      "Shampoo",
-      "Soap",
-      "Face Wash",
-      "Toothpaste",
-      "Toothbrush",
-      "Deodorant"
-    ]
+    "items": []
   },
   {
     "id": "household-cleaning",
     "name": "Household Cleaning",
-    "group": "Home essentials",
     "icon": "SprayCan",
-    "items": [
-      "Dishwashing Liquid",
-      "Floor Cleaner",
-      "Toilet Cleaner",
-      "Bleach"
-    ]
+    "items": []
   },
   {
-    "id": "laundry",
-    "name": "Laundry",
-    "group": "Home essentials",
+    "id": "laundry-detergents",
+    "name": "Laundry & Detergents",
     "icon": "WashingMachine",
-    "items": [
-      "Washing Powder",
-      "Detergent",
-      "Fabric Softener",
-      "Stain Remover",
-      "Washing Bars"
-    ]
+    "items": []
   },
   {
-    "id": "tissue-paper-products",
-    "name": "Tissue & Paper Products",
-    "group": "Home essentials",
+    "id": "tissues-paper-products",
+    "name": "Tissues & Paper Products",
     "icon": "ScrollText",
-    "items": [
-      "Toilet Tissue",
-      "Kitchen Roll",
-      "Facial Tissue",
-      "Napkins"
-    ]
+    "items": []
   },
   {
     "id": "home-kitchen",
     "name": "Home & Kitchen",
-    "group": "Home essentials",
-    "icon": "CookingPot",
-    "items": [
-      "Foil",
-      "Cling Film",
-      "Garbage Bags",
-      "Sponges",
-      "Cleaning Brushes"
-    ]
+    "icon": "Utensils",
+    "items": []
   },
   {
-    "id": "mosquito-pest-control",
-    "name": "Mosquito & Pest Control",
-    "group": "Home essentials",
-    "icon": "BugOff",
-    "items": [
-      "Mosquito Coils",
-      "Sprays",
-      "Repellents",
-      "Insect Killers"
-    ]
-  },
-  {
-    "id": "pet-food-pet-care",
-    "name": "Pet Food & Pet Care",
-    "group": "Care & family",
+    "id": "pet-care",
+    "name": "Pet Care",
     "icon": "PawPrint",
-    "items": [
-      "Cat Food",
-      "Dog Food",
-      "Pet Treats",
-      "Pet Accessories"
-    ]
-  },
-  {
-    "id": "stationery-school-supplies",
-    "name": "Stationery & School Supplies",
-    "group": "Home essentials",
-    "icon": "NotebookPen",
-    "items": [
-      "Pens",
-      "Pencils",
-      "Notebooks",
-      "Markers",
-      "Erasers",
-      "Art Supplies"
-    ]
+    "items": []
   },
   {
     "id": "health-wellness",
     "name": "Health & Wellness",
-    "group": "Care & family",
     "icon": "HeartPulse",
-    "items": [
-      "Basic OTC Products",
-      "Vitamins",
-      "First-Aid Items",
-      "Personal Hygiene"
-    ]
+    "items": []
   },
   {
     "id": "perfumes-fragrances",
     "name": "Perfumes & Fragrances",
-    "group": "Care & family",
     "icon": "Wind",
-    "items": [
-      "Perfumes",
-      "Body Sprays",
-      "Air Fresheners"
-    ]
+    "items": []
   },
   {
-    "id": "baby-kids-snacks",
-    "name": "Baby & Kids Snacks",
-    "group": "Care & family",
-    "icon": "Lollipop",
-    "items": [
-      "Baby Biscuits",
-      "Kids Cereals",
-      "Kids Juices",
-      "Chocolates",
-      "Snacks"
-    ]
+    "id": "seasonal-imported",
+    "name": "Seasonal & Imported",
+    "icon": "Gift",
+    "items": []
   },
   {
-    "id": "seasonal-special-items",
-    "name": "Seasonal & Special Items",
-    "group": "Special selections",
-    "icon": "CalendarDays",
-    "items": [
-      "Ramadan Items",
-      "Eid Items",
-      "School Season",
-      "Winter Products",
-      "Summer Products"
-    ]
-  },
-  {
-    "id": "imported-premium-products",
-    "name": "Imported / Premium Products",
-    "group": "Special selections",
-    "icon": "Globe",
-    "items": [
-      "Imported Chocolates",
-      "Cereals",
-      "Sauces",
-      "Coffee",
-      "Snacks"
-    ]
-  },
-  {
-    "id": "drinking-water",
-    "name": "Drinking Water",
-    "group": "Food & drinks",
-    "icon": "GlassWater",
-    "items": [
-      "Bottled Water",
-      "Mineral Water",
-      "Water Dispensers"
-    ]
-  },
-  {
-    "id": "ice-cream-frozen-desserts",
-    "name": "Ice Cream & Frozen Desserts",
-    "group": "Fresh & chilled",
+    "id": "ice-cream-desserts",
+    "name": "Ice Cream & Desserts",
     "icon": "IceCreamBowl",
-    "items": [
-      "Ice Cream",
-      "Kulfi",
-      "Cones",
-      "Frozen Desserts"
-    ]
+    "items": []
   },
   {
-    "id": "ready-to-cook-ready-to-eat",
-    "name": "Ready-to-Cook / Ready-to-Eat",
-    "group": "Pantry",
-    "icon": "Soup",
-    "items": [
-      "Instant Meals",
-      "Frozen Snacks",
-      "Ready Gravies",
-      "Instant Noodles"
-    ]
+    "id": "everyday-stationery",
+    "name": "Everyday & Stationery",
+    "icon": "NotebookPen",
+    "items": []
   },
   {
-    "id": "cash-convenience-items",
-    "name": "Cash & Convenience Items",
-    "group": "Home essentials",
-    "icon": "BatteryCharging",
-    "items": [
-      "Batteries",
-      "Lighters",
-      "Chargers",
-      "Umbrellas",
-      "Small Daily-Use Items"
-    ]
+    "id": "fresh-meat-seafood",
+    "name": "Fresh Meat & Seafood",
+    "icon": "Fish",
+    "items": []
   }
 ];
-export const GROCERY_CATEGORIES = GROCERY_TAXONOMY.map(c=>c.name);
-export const CATEGORY_ALIASES = {
-  "Fruits": "Fresh Fruits & Vegetables",
-  "Vegetables": "Fresh Fruits & Vegetables",
-  "Dairy & Eggs": "Dairy & Chilled Products",
-  "Bakery": "Bread & Bakery",
-  "Rice & Grains": "Rice & Pulses (Daal)",
-  "Flour & Baking": "Atta, Flour & Grains",
-  "Pulses & Lentils": "Rice & Pulses (Daal)",
-  "Spices & Condiments": "Spices & Masala",
-  "Tea & Coffee": "Tea, Coffee & Beverages",
-  "Beverages": "Tea, Coffee & Beverages",
-  "Snacks & Sweets": "Snacks & Namkeen",
-  "Canned & Packaged": "Canned & Packaged Foods",
-  "Pet Supplies": "Pet Food & Pet Care",
-  "Other": "Cash & Convenience Items"
+export const GROCERY_CATEGORIES=GROCERY_TAXONOMY.map(c=>c.name);
+export const CATEGORY_ALIASES={
+  "Atta, Flour & Grains": "Grocery Staples",
+  "Rice & Pulses (Daal)": "Grocery Staples",
+  "Sugar, Salt & Sweeteners": "Grocery Staples",
+  "Spices & Masala": "Spices & Sauces",
+  "Noodles, Pasta & Sauces": "Spices & Sauces",
+  "Tea, Coffee & Beverages": "Drinks, Tea & Coffee",
+  "Drinking Water": "Drinks, Tea & Coffee",
+  "Dairy & Chilled Products": "Milk & Dairy",
+  "Bread & Bakery": "Bakery & Breakfast",
+  "Breakfast & Cereals": "Bakery & Breakfast",
+  "Biscuits, Cookies & Wafers": "Snacks & Confectionery",
+  "Chocolates & Confectionery": "Snacks & Confectionery",
+  "Snacks & Namkeen": "Snacks & Confectionery",
+  "Baby & Kids Snacks": "Snacks & Confectionery",
+  "Fresh Fruits & Vegetables": "Fruits & Vegetables",
+  "Frozen Foods": "Frozen & Instant Foods",
+  "Ready-to-Cook / Ready-to-Eat": "Frozen & Instant Foods",
+  "Canned & Packaged Foods": "Frozen & Instant Foods",
+  "Baby Care": "Baby Care & Nutrition",
+  "Personal Care": "Personal Care & Hygiene",
+  "Mosquito & Pest Control": "Household Cleaning",
+  "Laundry": "Laundry & Detergents",
+  "Tissue & Paper Products": "Tissues & Paper Products",
+  "Pet Food & Pet Care": "Pet Care",
+  "Seasonal & Special Items": "Seasonal & Imported",
+  "Imported / Premium Products": "Seasonal & Imported",
+  "Ice Cream & Frozen Desserts": "Ice Cream & Desserts",
+  "Cash & Convenience Items": "Everyday & Stationery",
+  "Stationery & School Supplies": "Everyday & Stationery",
+  "Meat & Poultry": "Fresh Meat & Seafood",
+  "Fish & Seafood": "Fresh Meat & Seafood",
+  "Fruits": "Fruits & Vegetables",
+  "Vegetables": "Fruits & Vegetables",
+  "Dairy & Eggs": "Milk & Dairy",
+  "Bakery": "Bakery & Breakfast",
+  "Rice & Grains": "Grocery Staples",
+  "Flour & Baking": "Grocery Staples",
+  "Pulses & Lentils": "Grocery Staples",
+  "Spices & Condiments": "Spices & Sauces",
+  "Tea & Coffee": "Drinks, Tea & Coffee",
+  "Beverages": "Drinks, Tea & Coffee",
+  "Snacks & Sweets": "Snacks & Confectionery",
+  "Canned & Packaged": "Frozen & Instant Foods",
+  "Pet Supplies": "Pet Care",
+  "Other": "Everyday & Stationery"
 };
-export const LEGACY_CATEGORIES = ["Meat & Poultry", "Fish & Seafood"];
+export const LEGACY_CATEGORIES=[];
 export function normalizeCategory(value){const name=String(value??" ").trim();return CATEGORY_ALIASES[name]||GROCERY_CATEGORIES.find(c=>c.toLowerCase()===name.toLowerCase())||name;}
-export function categoryExamples(name){return GROCERY_TAXONOMY.find(c=>c.name===normalizeCategory(name))?.items.join(", ")||"";}
+export function categoryExamples(){return "";}

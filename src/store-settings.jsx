@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {PasswordChange,RecoveryQueue} from './account-security.jsx';
 import {WorkspaceTabs} from './admin-workflow.jsx';
 import {Button} from '@/components/ui/button';
-const sections={store:[['phone','Store phone'],['address','Store address'],['hours','Opening hours'],['deliveryNote','Delivery information']],payments:[['accountName','Payment account holder'],['jazzcash','JazzCash number'],['easypaisa','Easypaisa number'],['bank','Bank name + IBAN / account number']]};
+const sections={store:[['phone','Store phone'],['whatsapp','WhatsApp orders number (e.g. 03001234567)'],['address','Store address'],['hours','Opening hours'],['deliveryNote','Delivery information']],payments:[['accountName','Payment account holder'],['jazzcash','JazzCash number'],['easypaisa','Easypaisa number'],['bank','Bank name + IBAN / account number']]};
 export default function StoreSettings(){const[form,setForm]=useState({}),[tab,setTab]=useState('store'),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[loaded,setLoaded]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
  async function load(){setLoading(true);setError('');try{let r=await fetch('/api/public/settings'),j=await r.json();if(!r.ok)throw Error(j.error||'Could not load settings');setForm(j);setLoaded(true)}catch(e){setError(e.message)}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
