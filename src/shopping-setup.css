@@ -9,7 +9,7 @@
 .market .fulfillment-choice-tabs button:disabled{opacity:.6;cursor:wait}
 .market .store-floating-contact{position:fixed;inset:auto 22px 22px;z-index:80;display:flex;justify-content:space-between;pointer-events:none;gap:12px}
 .market .store-floating-contact a,.market .store-floating-contact button{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 18px;border-radius:40px;font-size:14px;font-weight:650;text-decoration:none;box-shadow:0 4px 16px #0002;cursor:pointer;transition:transform .18s}
-.market .store-community-float{background:#fff;color:#00745c;border:1px solid #00745c}
+.market .store-community-float{background:#00745c;color:#fff;border:1px solid #00745c}
 .market .store-whatsapp-float{background:#00745c;color:#fff;border:1px solid #00745c}
 .market .store-floating-contact a:hover,.market .store-floating-contact button:hover{transform:translateY(-2px)}
 .market .store-floating-contact a:focus-visible,.market .store-floating-contact button:focus-visible{outline:3px solid #fc2600;outline-offset:3px}
