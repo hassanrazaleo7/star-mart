@@ -1,1 +1,89 @@
-.simple-category-row{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:8px 3px 18px;overscroll-behavior-x:contain}.simple-category-row::-webkit-scrollbar{display:none}.market .simple-category-card{flex:0 0 148px;display:flex;flex-direction:column;align-items:center;gap:14px;background:transparent;border:0;color:#181818;cursor:pointer;padding:4px;text-align:center;scroll-snap-align:start}.simple-category-art{display:block;width:124px;height:124px;border-radius:50%;overflow:hidden;border:2px solid #e3ece6;transition:transform .2s,border-color .2s;box-shadow:0 4px 16px #00000008}.simple-category-art img{width:100%;height:100%;object-fit:cover;display:block}.market .simple-category-card strong{font-size:14px;line-height:1.5;font-weight:650;min-height:42px}.market .simple-category-card:hover .simple-category-art{transform:translateY(-3px);border-color:#fc2600}.market .simple-category-card.selected .simple-category-art{border-color:#00745c;box-shadow:0 0 0 4px #00745c12}.category-row-controls{display:flex;align-items:center;gap:9px}.category-row-controls .text-link{display:flex;align-items:center;gap:6px;margin-right:12px}.market .category-row-controls button{border:1px solid #d9e5dc;display:grid;place-items:center;background:#fff;color:#00745c;width:38px;height:38px;border-radius:50%;cursor:pointer}.market .category-row-controls button:hover:not(:disabled){border-color:#fc2600;color:#fc2600}.category-row-controls button:disabled{opacity:.3;cursor:default}.market .store-fulfillment{background:#fff;border-bottom:1px solid #e3e9e5}.fulfillment-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:16px;padding-bottom:16px}.fulfillment-caption{display:flex;align-items:center;gap:9px;color:#00745c;font-size:13px;line-height:1.5}.fulfillment-caption span{color:#181818}.market .filter-tabs select{max-width:100%;background:#fff;color:#181818;border:1px solid #d5e1d9;border-radius:8px;padding:11px}.selected-aisle{color:#00745c;font-size:14px;font-weight:600;align-self:center}.market #categories,.market #products{scroll-margin-top:120px}.simple-category-card:focus-visible,.category-row-controls button:focus-visible{outline:3px solid #fc2600;outline-offset:3px}.market .announcement a{color:#fff}@media(max-width:540px){.simple-category-row{gap:10px}.market .simple-category-card{flex-basis:112px;gap:11px}.simple-category-art{width:94px;height:94px}.market .simple-category-card strong{font-size:12px}.category-row-controls .text-link{display:none}.fulfillment-row{flex-direction:column;align-items:center;gap:8px}.fulfillment-caption{font-size:12px;text-align:center}.market .simple-category-section .section-heading{gap:12px}.market #categories,.market #products{scroll-margin-top:150px}}
+/* Larger square category pictures */
+.market .simple-category-row {
+  gap: 20px;
+  padding: 10px 5px 22px;
+}
+
+.market .simple-category-card {
+  flex: 0 0 176px;
+  gap: 12px;
+  padding: 6px;
+}
+
+.market .simple-category-art {
+  width: 160px;
+  height: 160px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 2px solid #e3ece6;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.market .simple-category-art img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  padding: 8px;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.market .simple-category-card strong {
+  color: #181818;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  min-height: 42px;
+}
+
+.market .simple-category-card:hover .simple-category-art {
+  transform: translateY(-4px);
+  border-color: #00745c;
+  box-shadow: 0 8px 22px rgba(0, 116, 92, 0.12);
+}
+
+.market .simple-category-card.selected .simple-category-art {
+  border-color: #fc2600;
+  box-shadow: 0 0 0 3px rgba(252, 38, 0, 0.1);
+}
+
+@media (max-width: 540px) {
+  .market .simple-category-row {
+    gap: 12px;
+  }
+
+  .market .simple-category-card {
+    flex-basis: 132px;
+    padding: 4px;
+    gap: 10px;
+  }
+
+  .market .simple-category-art {
+    width: 120px;
+    height: 120px;
+    border-radius: 14px;
+  }
+
+  .market .simple-category-art img {
+    padding: 6px;
+  }
+
+  .market .simple-category-card strong {
+    font-size: 13px;
+    min-height: 38px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market .simple-category-art {
+    transition: none;
+  }
+
+  .market .simple-category-card:hover .simple-category-art {
+    transform: none;
+  }
+}
