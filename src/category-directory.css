@@ -1,1 +1,247 @@
+/* Category row */
+.market .simple-category-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 4px 18px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
 
+.market .simple-category-row::-webkit-scrollbar {
+  display: none;
+}
+
+.market .simple-category-card {
+  flex: 0 0 150px;
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4px;
+  margin: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: #181818;
+  cursor: pointer;
+  text-align: center;
+  scroll-snap-align: start;
+}
+
+.market .simple-category-art {
+  display: block;
+  flex: 0 0 auto;
+  width: 140px;
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #dce8e1;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.market .simple-category-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  padding: 5px;
+  box-sizing: border-box;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 0;
+}
+
+.market .simple-category-card strong {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: #181818;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.market .simple-category-card:hover .simple-category-art {
+  transform: none;
+  border-color: #00745c;
+  box-shadow: 0 5px 16px rgba(0, 116, 92, 0.12);
+}
+
+.market .simple-category-card.selected .simple-category-art {
+  border-color: #fc2600;
+  box-shadow: 0 0 0 2px rgba(252, 38, 0, 0.1);
+}
+
+/* Row navigation */
+.category-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.category-row-controls .text-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
+
+.market .category-row-controls button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: #ffffff;
+  color: #00745c;
+  border: 1px solid #d9e5dc;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.market .category-row-controls button:hover:not(:disabled) {
+  border-color: #fc2600;
+  color: #fc2600;
+}
+
+.category-row-controls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Delivery / pickup summary */
+.market .store-fulfillment {
+  background: #ffffff;
+  border-bottom: 1px solid #e3e9e5;
+}
+
+.fulfillment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.fulfillment-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #00745c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fulfillment-caption span {
+  color: #181818;
+}
+
+.market .filter-tabs select {
+  max-width: 100%;
+  background: #ffffff;
+  color: #181818;
+  border: 1px solid #d5e1d9;
+  border-radius: 8px;
+  padding: 11px;
+}
+
+.selected-aisle {
+  color: #00745c;
+  font-size: 14px;
+  font-weight: 600;
+  align-self: center;
+}
+
+.market #categories,
+.market #products {
+  scroll-margin-top: 120px;
+}
+
+.simple-category-card:focus-visible,
+.category-row-controls button:focus-visible {
+  outline: 3px solid #fc2600;
+  outline-offset: 3px;
+}
+
+.market .announcement a {
+  color: #ffffff;
+}
+
+/* Mobile */
+@media (max-width: 540px) {
+  .market .simple-category-row {
+    gap: 12px;
+  }
+
+  .market .simple-category-card {
+    flex-basis: 120px;
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    gap: 10px;
+  }
+
+  .market .simple-category-art {
+    width: 110px;
+    height: 110px;
+    min-height: 110px;
+    max-height: 110px;
+    border-radius: 12px;
+  }
+
+  .market .simple-category-card strong {
+    font-size: 13px;
+  }
+
+  .category-row-controls .text-link {
+    display: none;
+  }
+
+  .fulfillment-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fulfillment-caption {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .market .simple-category-section .section-heading {
+    gap: 12px;
+  }
+
+  .market #categories,
+  .market #products {
+    scroll-margin-top: 150px;
+  }
+}
