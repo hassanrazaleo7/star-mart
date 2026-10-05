@@ -146,24 +146,6 @@ export const SHOP_DEPARTMENTS = [
     ]
   },
   {
-    "id": "pet-care",
-    "name": "Pet Care",
-    "icon": "PawPrint",
-    "featured": true,
-    "categories": [
-      "Pet Care"
-    ]
-  },
-  {
-    "id": "health-wellness",
-    "name": "Health & Wellness",
-    "icon": "HeartPulse",
-    "featured": true,
-    "categories": [
-      "Health & Wellness"
-    ]
-  },
-  {
     "id": "perfumes-fragrances",
     "name": "Perfumes & Fragrances",
     "icon": "Wind",
@@ -197,15 +179,6 @@ export const SHOP_DEPARTMENTS = [
     "featured": true,
     "categories": [
       "Everyday & Stationery"
-    ]
-  },
-  {
-    "id": "fresh-meat-seafood",
-    "name": "Fresh Meat & Seafood",
-    "icon": "Fish",
-    "featured": true,
-    "categories": [
-      "Fresh Meat & Seafood"
     ]
   }
 ];

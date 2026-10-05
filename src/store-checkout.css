@@ -2,3 +2,5 @@
 /* Keep checkout headings visible while long payment details scroll. */
 .sc-panel{display:flex;flex-direction:column;overflow:hidden}.sc-header,.sc-steps{flex-shrink:0}.sc-layout{min-height:0;overflow-y:auto}.sc-primary{display:flex;align-items:center;justify-content:center;gap:8px}.sc-confirmation{overflow-wrap:anywhere}@media(min-width:761px){.sc-summary{position:sticky;top:0;align-self:start}}@media(max-width:760px){.sc-panel{max-height:calc(100dvh - 20px)}.sc-confirmation{padding:24px;box-sizing:border-box}}
 .market .sc-payments>button.selected{border-color:#00745c;background:#eef8f2;color:#005140}.market .sc-payments>button:not(.selected):hover{border-color:#fc2600;background:#fc260008;color:#181818}
+
+.market .sc-whatsapp{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;padding:13px 16px;background:#fff;border:1px solid #00745c;border-radius:12px;color:#00745c;font-weight:700;cursor:pointer}.market .sc-whatsapp:hover{background:#00745c08;border-color:#fc2600;color:#fc2600}

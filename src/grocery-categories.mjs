@@ -96,18 +96,6 @@ export const GROCERY_TAXONOMY = [
     "items": []
   },
   {
-    "id": "pet-care",
-    "name": "Pet Care",
-    "icon": "PawPrint",
-    "items": []
-  },
-  {
-    "id": "health-wellness",
-    "name": "Health & Wellness",
-    "icon": "HeartPulse",
-    "items": []
-  },
-  {
     "id": "perfumes-fragrances",
     "name": "Perfumes & Fragrances",
     "icon": "Wind",
@@ -129,12 +117,6 @@ export const GROCERY_TAXONOMY = [
     "id": "everyday-stationery",
     "name": "Everyday & Stationery",
     "icon": "NotebookPen",
-    "items": []
-  },
-  {
-    "id": "fresh-meat-seafood",
-    "name": "Fresh Meat & Seafood",
-    "icon": "Fish",
     "items": []
   }
 ];
@@ -186,6 +168,9 @@ export const CATEGORY_ALIASES={
   "Pet Supplies": "Pet Care",
   "Other": "Everyday & Stationery"
 };
-export const LEGACY_CATEGORIES=[];
+export const REMOVED_CATEGORIES=["Pet Care", "Health & Wellness", "Fresh Meat & Seafood"];
+export const LEGACY_CATEGORIES=REMOVED_CATEGORIES;
 export function normalizeCategory(value){const name=String(value??" ").trim();return CATEGORY_ALIASES[name]||GROCERY_CATEGORIES.find(c=>c.toLowerCase()===name.toLowerCase())||name;}
 export function categoryExamples(){return "";}
+
+export function isRemovedCategory(value){return REMOVED_CATEGORIES.includes(normalizeCategory(value))||["Health & Fitness","Health and Fitness","Pet Care","Fresh Meat and Sea Foods"].includes(String(value).trim());}
