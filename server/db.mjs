@@ -45,5 +45,6 @@ await d.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname=
 for(const table of ['customer_orders','products','stock_movements','purchases','sales','receipts','adjustments','expenses','vendors','vendor_applications','vendor_payments','vendor_returns','customer_accounts','customer_credit_payments','store_accounts','loyalty_entries']){
  await d.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='star_mart_activity' AND tgrelid='${table}'::regclass) THEN CREATE TRIGGER star_mart_activity AFTER INSERT OR UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION star_mart_log_change(); END IF; END $$`);
 }
+await d.query("CREATE TABLE IF NOT EXISTS customer_shopping_preferences(customer_id TEXT PRIMARY KEY REFERENCES customer_accounts(id) ON DELETE CASCADE,fulfillment TEXT NOT NULL CHECK(fulfillment IN ('Delivery','Pickup')),phone TEXT NOT NULL,address TEXT NOT NULL DEFAULT '',updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 })();return initialized}
 export async function close(){if(pool)await pool.end();if(local)await local.close();pool=null;local=null;initialized=null}
