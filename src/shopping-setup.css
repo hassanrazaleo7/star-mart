@@ -14,3 +14,21 @@
 .market .store-floating-contact a:hover,.market .store-floating-contact button:hover{transform:translateY(-2px)}
 .market .store-floating-contact a:focus-visible,.market .store-floating-contact button:focus-visible{outline:3px solid #fc2600;outline-offset:3px}
 @media(max-width:540px){.market .fulfillment-choice{padding:14px}.market .fulfillment-choice-tabs{gap:10px}.market .fulfillment-choice-tabs button{min-height:135px}.market .fulfillment-choice-tabs button strong{font-size:16px}.market .store-floating-contact{inset:auto 12px calc(12px + env(safe-area-inset-bottom))}.market .store-floating-contact a,.market .store-floating-contact button{font-size:12px;padding:11px 14px}}
+
+.market .store-account-dropdown{width:300px;max-width:calc(100vw - 28px);padding:18px;border-radius:18px;border:1px solid #e7ece9;box-shadow:0 14px 45px #102a2020}
+.market .account-button{display:grid;place-items:center;padding:0;overflow:hidden}
+.market .account-header-photo{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.market .account-profile-head{display:flex;gap:13px;align-items:center}
+.market .account-profile-head>div{min-width:0;flex:1}
+.market .account-profile-head strong{display:block;font-size:17px;font-weight:700;overflow-wrap:anywhere;color:#181818}
+.market .store-account-dropdown .account-photo-edit{position:relative;display:grid;place-items:center;padding:0;width:52px;height:52px;flex-shrink:0;border-radius:50%;background:#e9f5ef;color:#00745c}
+.market .account-photo-edit span{font-size:23px;font-weight:650}.market .account-photo-edit img{width:52px;height:52px;object-fit:cover;border-radius:50%}
+.market .account-photo-edit i{position:absolute;right:-2px;bottom:-2px;display:grid;place-items:center;width:20px;height:20px;background:#00745c;color:white;border:2px solid white;border-radius:50%}
+.market .account-mode-pill{display:inline-block;background:#e9f5ef;color:#00745c;border-radius:20px;font-size:11px;padding:5px 9px;margin-top:7px;font-weight:600}
+.market .store-account-dropdown .account-upload-link{width:auto;margin:10px 0 14px;padding:0;color:#00745c;font-size:12px;background:transparent}
+.market .account-menu-links{border-top:1px solid #e7ece9;padding-top:9px}
+.market .account-menu-links a,.market .account-menu-links button{min-height:46px;font-size:13px;padding:12px 10px;gap:12px}
+.market .account-menu-links svg{flex-shrink:0;color:#00745c}
+.market .account-menu-links a:hover,.market .account-menu-links button:hover{color:#181818;background:#eff7f3}
+.market .account-menu-links .account-signout,.market .account-menu-links .account-signout svg{color:#fc2600}
+.market .account-menu-links .account-signout:hover{background:#fff1ed;color:#fc2600}
