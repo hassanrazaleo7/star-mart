@@ -87,3 +87,49 @@
     transform: none;
   }
 }
+.market .simple-category-section {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.market .simple-category-row {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: auto;
+  gap: 14px;
+}
+
+.market .simple-category-card {
+  flex: 0 0 140px;
+  width: 140px;
+  min-width: 0;
+  max-width: 140px;
+  box-sizing: border-box;
+}
+
+.market .simple-category-art {
+  width: 128px;
+  height: 128px;
+  flex-shrink: 0;
+  border-radius: 14px;
+}
+
+@media (max-width: 540px) {
+  .market .simple-category-card {
+    flex-basis: 112px;
+    width: 112px;
+    max-width: 112px;
+  }
+
+  .market .simple-category-art {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+  }
+}
