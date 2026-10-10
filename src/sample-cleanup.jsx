@@ -1,2 +1,81 @@
-import React,{useState} from 'react';
-export default function SampleCleanup({onDone}){let [preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState(null);async function call(remove){setBusy(true);setError('');try{let r=await fetch('/api/admin/sample-cleanup',{method:remove?'POST':'GET',credentials:'same-origin'}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not check sample products');if(remove){setResult(j);setPreview(null);await onDone()}else{setPreview(j);setResult(null)}}catch(e){setError(e.message)}finally{setBusy(false)}}return <section className="card" style={{padding:20,marginBottom:20}}><h3 style={{marginTop:0}}>Remove imported demo products</h3><p>Checks only SM-DEMO products with the original sample brand. Products linked to a vendor or any transaction/stock history are retained.</p><button className="quiet" disabled={busy} onClick={()=>call(false)}>{busy?'Checking…':'Check imported demo products'}</button>{preview&&<div><p>{preview.matched} matched · {preview.eligible} can be removed · {preview.skipped.length} retained.</p>{preview.eligible>0&&<button className="primary" disabled={busy} onClick={()=>{if(confirm('Permanently delete '+preview.eligible+' unused imported demo products? This cannot be undone.'))call(true)}}>Delete unused demo products</button>}{preview.skipped.map(p=><p key={p.sku}>{p.sku} · {p.reason}</p>)}</div>}{result&&<p role="status">Deleted {result.deleted} sample products. {result.skipped.length} retained due to history or vendor/brand changes.</p>}{error&&<p className="error">{error}</p>}</section>}
+import React, { useState } from 'react';
+export default function SampleCleanup({ onDone }) {
+  let [preview, setPreview] = useState(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [result, setResult] = useState(null);
+  async function call(remove) {
+    setBusy(true);
+    setError('');
+    try {
+      let r = await fetch('/api/admin/sample-cleanup', {
+          method: remove ? 'POST' : 'GET',
+          credentials: 'same-origin',
+        }),
+        j = await r.json();
+      if (!r.ok) throw Error(j.error || 'Could not check sample products');
+      if (remove) {
+        setResult(j);
+        setPreview(null);
+        await onDone();
+      } else {
+        setPreview(j);
+        setResult(null);
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="card" style={{ padding: 20, marginBottom: 20 }}>
+      <h3 style={{ marginTop: 0 }}>Remove imported demo products</h3>
+      <p>
+        Checks only SM-DEMO products with the original sample brand. Products linked to a vendor or
+        any transaction/stock history are retained.
+      </p>
+      <button className="quiet" disabled={busy} onClick={() => call(false)}>
+        {busy ? 'Checking…' : 'Check imported demo products'}
+      </button>
+      {preview && (
+        <div>
+          <p>
+            {preview.matched} matched · {preview.eligible} can be removed · {preview.skipped.length}{' '}
+            retained.
+          </p>
+          {preview.eligible > 0 && (
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  confirm(
+                    'Permanently delete ' +
+                      preview.eligible +
+                      ' unused imported demo products? This cannot be undone.'
+                  )
+                )
+                  call(true);
+              }}
+            >
+              Delete unused demo products
+            </button>
+          )}
+          {preview.skipped.map(p => (
+            <p key={p.sku}>
+              {p.sku} · {p.reason}
+            </p>
+          ))}
+        </div>
+      )}
+      {result && (
+        <p role="status">
+          Deleted {result.deleted} sample products. {result.skipped.length} retained due to history
+          or vendor/brand changes.
+        </p>
+      )}
+      {error && <p className="error">{error}</p>}
+    </section>
+  );
+}

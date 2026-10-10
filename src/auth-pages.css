@@ -1,3 +1,355 @@
-.sm-auth{min-height:100dvh;background:#f7f5ef;color:#004b3b;font-family:'DM Sans',Arial,sans-serif}.sm-auth *{box-sizing:border-box}.sm-auth a{text-decoration:none;color:inherit}.sm-auth button{font:inherit;cursor:pointer}.sm-auth .auth-header{height:88px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 max(5vw,24px);box-shadow:0 1px 14px #10101013;position:relative;z-index:2}.sm-auth .auth-header img{display:block;width:185px;height:67px;object-fit:contain;object-position:left}.sm-auth .auth-header nav{display:flex;gap:33px;font-size:13px;font-weight:700}.sm-auth .auth-header nav a:hover{color:#fc2600}.sm-auth .auth-header-bag{width:43px;height:43px;display:grid;place-items:center;border:1px solid #e4ece5;border-radius:50%;color:#006a54;background:#f8fbf8}.sm-auth-scene{min-height:calc(100dvh - 88px);display:grid;grid-template-columns:minmax(0,1fr) minmax(350px,430px);align-items:center;gap:6vw;padding:44px max(6vw,30px);background:#ffebe8 url('/grocery-hero.png') center/cover no-repeat}.sm-vendor .sm-auth-scene{background-image:url('/vendor-grocery.png')}.sm-auth-copy{max-width:610px;align-self:center;text-shadow:0 1px 10px #fff8}.sm-eyebrow{font-weight:800;font-size:11px;letter-spacing:.23em;color:#00745c}.sm-auth-copy h1{font:700 clamp(42px,5vw,78px)/1.06 Georgia,serif;letter-spacing:-.055em;margin:20px 0;color:#004839}.sm-auth-copy h1 em{font-style:normal;color:#fc2600}.sm-auth-copy p{font-size:17px;line-height:1.65;max-width:435px;color:#4c4c4c}.sm-trust{display:flex;gap:12px;flex-wrap:wrap;margin-top:35px}.sm-trust span{font-size:11px;font-weight:800;background:#ffffffdc;border:1px solid #d7e9e6;border-radius:30px;padding:10px 14px;color:#006f58}.sm-auth-card{width:100%;padding:33px 36px 26px;background:#fffffff5;border:1px solid #e5ebe3;box-shadow:0 24px 72px #00473833;border-radius:20px;backdrop-filter:blur(12px)}.sm-card-mark{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:900;letter-spacing:.14em;color:#fc2600}.sm-star{font-size:22px;line-height:0}.sm-auth-card h2{font:700 33px/1.13 Georgia,serif;letter-spacing:-.04em;margin:17px 0 8px;color:#004c3d}.sm-auth-card>p{margin:0 0 19px;color:#717171;font-size:13px;line-height:1.55}.sm-field{display:block;margin:13px 0;text-align:left}.sm-field>span:first-child{display:block;margin-bottom:6px;font-size:12px;font-weight:800;color:#00745c}.sm-input{height:46px;display:flex;align-items:center;gap:10px;padding:0 12px;border:1px solid #d8e3dc;border-radius:10px;background:#fbfdfb;color:#8a8a8a}.sm-input:focus-within{border-color:#00745c;box-shadow:0 0 0 3px #00745c24}.sm-input input{border:0;outline:0;background:transparent;width:100%;height:100%;min-width:0;font-size:14px;color:#004a3a}.sm-eye{display:grid;place-items:center;padding:2px;border:0;background:transparent;color:#757575}.sm-primary{width:100%;min-height:47px;border:0;border-radius:10px;background:#fc2600;color:#fff!important;font-weight:900;font-size:14px;display:flex;justify-content:center;align-items:center;gap:10px;margin:19px 0 0;box-shadow:0 8px 18px #fc260030}.sm-primary:hover{background:#fc2600}.sm-divider{position:relative;margin:23px 0 15px;text-align:center;color:#8a8a8a;font-size:10px;text-transform:uppercase;letter-spacing:.1em}.sm-divider:before{content:'';position:absolute;inset:50% 0 auto;border-top:1px solid #e6ece7}.sm-divider span{position:relative;background:#fff;padding:0 12px}.sm-social{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sm-social button{min-height:44px;border:1px solid #dce7df;background:#fff;border-radius:9px;color:#005745;font-size:13px;font-weight:800}.sm-social button:hover{border-color:#00745c;background:#f5faf6}.sm-social b{font-size:18px;margin-right:8px}.sm-google{color:#fc2600}.sm-facebook{color:#00745c;font-family:Arial,sans-serif}.sm-switch{text-align:center;margin:23px 0 0!important;font-size:12px!important}.sm-switch button,.sm-switch a{border:0;background:transparent;color:#006a54!important;font-weight:900;padding:0}.sm-error{border:1px solid #fedad3;background:#fff5f3;color:#fc2600;border-radius:8px;padding:10px 12px;font-size:12px!important;line-height:1.5}.sm-vendor .sm-primary{background:#00604c}.sm-vendor .sm-primary:hover{background:#00493a}
-@media(max-width:800px){.sm-auth .auth-header nav{display:none}.sm-auth-scene{grid-template-columns:1fr;gap:20px;padding:34px 20px 45px;background-position:65% center}.sm-auth-copy{background:#fff9;padding:17px 19px;border-radius:13px}.sm-auth-copy h1{font-size:42px}.sm-auth-copy p{font-size:14px}.sm-trust{margin-top:18px}.sm-auth-card{max-width:500px;justify-self:center}.sm-vendor .sm-auth-scene{background-position:60% center}}@media(max-width:480px){.sm-auth .auth-header{height:70px}.sm-auth .auth-header img{width:143px;height:55px}.sm-auth-scene{min-height:calc(100dvh - 70px)}.sm-auth-card{padding:25px 20px}.sm-auth-card h2{font-size:29px}.sm-social{grid-template-columns:1fr}}
-.sm-portal.sm-admin .sm-auth-scene{background-image:linear-gradient(90deg,#fff2efaa,#fff2ef7a),url('/grocery-hero.png')}.sm-portal.sm-vendor .sm-auth-scene{background-image:url('/vendor-grocery.png')}.sm-portal.sm-staff .sm-auth-scene{background-image:url('/grocery-hero.png')}.sm-portal .sm-auth-card .sm-primary{background:#00614d}.sm-portal .sm-auth-card .sm-primary:hover{background:#004c3d}
+.sm-auth {
+  min-height: 100dvh;
+  background: #f7f5ef;
+  color: #004b3b;
+  font-family: 'DM Sans', Arial, sans-serif;
+}
+.sm-auth * {
+  box-sizing: border-box;
+}
+.sm-auth a {
+  text-decoration: none;
+  color: inherit;
+}
+.sm-auth button {
+  font: inherit;
+  cursor: pointer;
+}
+.sm-auth .auth-header {
+  height: 88px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 max(5vw, 24px);
+  box-shadow: 0 1px 14px #10101013;
+  position: relative;
+  z-index: 2;
+}
+.sm-auth .auth-header img {
+  display: block;
+  width: 185px;
+  height: 67px;
+  object-fit: contain;
+  object-position: left;
+}
+.sm-auth .auth-header nav {
+  display: flex;
+  gap: 33px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.sm-auth .auth-header nav a:hover {
+  color: #fc2600;
+}
+.sm-auth .auth-header-bag {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e4ece5;
+  border-radius: 50%;
+  color: #006a54;
+  background: #f8fbf8;
+}
+.sm-auth-scene {
+  min-height: calc(100dvh - 88px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(350px, 430px);
+  align-items: center;
+  gap: 6vw;
+  padding: 44px max(6vw, 30px);
+  background: #ffebe8 url('/grocery-hero.png') center/cover no-repeat;
+}
+.sm-vendor .sm-auth-scene {
+  background-image: url('/vendor-grocery.png');
+}
+.sm-auth-copy {
+  max-width: 610px;
+  align-self: center;
+  text-shadow: 0 1px 10px #fff8;
+}
+.sm-eyebrow {
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.23em;
+  color: #00745c;
+}
+.sm-auth-copy h1 {
+  font:
+    700 clamp(42px, 5vw, 78px)/1.06 Georgia,
+    serif;
+  letter-spacing: -0.055em;
+  margin: 20px 0;
+  color: #004839;
+}
+.sm-auth-copy h1 em {
+  font-style: normal;
+  color: #fc2600;
+}
+.sm-auth-copy p {
+  font-size: 17px;
+  line-height: 1.65;
+  max-width: 435px;
+  color: #4c4c4c;
+}
+.sm-trust {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 35px;
+}
+.sm-trust span {
+  font-size: 11px;
+  font-weight: 800;
+  background: #ffffffdc;
+  border: 1px solid #d7e9e6;
+  border-radius: 30px;
+  padding: 10px 14px;
+  color: #006f58;
+}
+.sm-auth-card {
+  width: 100%;
+  padding: 33px 36px 26px;
+  background: #fffffff5;
+  border: 1px solid #e5ebe3;
+  box-shadow: 0 24px 72px #00473833;
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+}
+.sm-card-mark {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #fc2600;
+}
+.sm-star {
+  font-size: 22px;
+  line-height: 0;
+}
+.sm-auth-card h2 {
+  font:
+    700 33px/1.13 Georgia,
+    serif;
+  letter-spacing: -0.04em;
+  margin: 17px 0 8px;
+  color: #004c3d;
+}
+.sm-auth-card > p {
+  margin: 0 0 19px;
+  color: #717171;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.sm-field {
+  display: block;
+  margin: 13px 0;
+  text-align: left;
+}
+.sm-field > span:first-child {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #00745c;
+}
+.sm-input {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid #d8e3dc;
+  border-radius: 10px;
+  background: #fbfdfb;
+  color: #8a8a8a;
+}
+.sm-input:focus-within {
+  border-color: #00745c;
+  box-shadow: 0 0 0 3px #00745c24;
+}
+.sm-input input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  font-size: 14px;
+  color: #004a3a;
+}
+.sm-eye {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: #757575;
+}
+.sm-primary {
+  width: 100%;
+  min-height: 47px;
+  border: 0;
+  border-radius: 10px;
+  background: #fc2600;
+  color: #fff !important;
+  font-weight: 900;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 19px 0 0;
+  box-shadow: 0 8px 18px #fc260030;
+}
+.sm-primary:hover {
+  background: #fc2600;
+}
+.sm-divider {
+  position: relative;
+  margin: 23px 0 15px;
+  text-align: center;
+  color: #8a8a8a;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.sm-divider:before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid #e6ece7;
+}
+.sm-divider span {
+  position: relative;
+  background: #fff;
+  padding: 0 12px;
+}
+.sm-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.sm-social button {
+  min-height: 44px;
+  border: 1px solid #dce7df;
+  background: #fff;
+  border-radius: 9px;
+  color: #005745;
+  font-size: 13px;
+  font-weight: 800;
+}
+.sm-social button:hover {
+  border-color: #00745c;
+  background: #f5faf6;
+}
+.sm-social b {
+  font-size: 18px;
+  margin-right: 8px;
+}
+.sm-google {
+  color: #fc2600;
+}
+.sm-facebook {
+  color: #00745c;
+  font-family: Arial, sans-serif;
+}
+.sm-switch {
+  text-align: center;
+  margin: 23px 0 0 !important;
+  font-size: 12px !important;
+}
+.sm-switch button,
+.sm-switch a {
+  border: 0;
+  background: transparent;
+  color: #006a54 !important;
+  font-weight: 900;
+  padding: 0;
+}
+.sm-error {
+  border: 1px solid #fedad3;
+  background: #fff5f3;
+  color: #fc2600;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px !important;
+  line-height: 1.5;
+}
+.sm-vendor .sm-primary {
+  background: #00604c;
+}
+.sm-vendor .sm-primary:hover {
+  background: #00493a;
+}
+@media (max-width: 800px) {
+  .sm-auth .auth-header nav {
+    display: none;
+  }
+  .sm-auth-scene {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 34px 20px 45px;
+    background-position: 65% center;
+  }
+  .sm-auth-copy {
+    background: #fff9;
+    padding: 17px 19px;
+    border-radius: 13px;
+  }
+  .sm-auth-copy h1 {
+    font-size: 42px;
+  }
+  .sm-auth-copy p {
+    font-size: 14px;
+  }
+  .sm-trust {
+    margin-top: 18px;
+  }
+  .sm-auth-card {
+    max-width: 500px;
+    justify-self: center;
+  }
+  .sm-vendor .sm-auth-scene {
+    background-position: 60% center;
+  }
+}
+@media (max-width: 480px) {
+  .sm-auth .auth-header {
+    height: 70px;
+  }
+  .sm-auth .auth-header img {
+    width: 143px;
+    height: 55px;
+  }
+  .sm-auth-scene {
+    min-height: calc(100dvh - 70px);
+  }
+  .sm-auth-card {
+    padding: 25px 20px;
+  }
+  .sm-auth-card h2 {
+    font-size: 29px;
+  }
+  .sm-social {
+    grid-template-columns: 1fr;
+  }
+}
+.sm-portal.sm-admin .sm-auth-scene {
+  background-image: linear-gradient(90deg, #fff2efaa, #fff2ef7a), url('/grocery-hero.png');
+}
+.sm-portal.sm-vendor .sm-auth-scene {
+  background-image: url('/vendor-grocery.png');
+}
+.sm-portal.sm-staff .sm-auth-scene {
+  background-image: url('/grocery-hero.png');
+}
+.sm-portal .sm-auth-card .sm-primary {
+  background: #00614d;
+}
+.sm-portal .sm-auth-card .sm-primary:hover {
+  background: #004c3d;
+}

@@ -1,73 +1,1505 @@
 import './product-detail.css';
-import {ShoppingWelcome,ShoppingSetup,StoreAccountMenu,StoreCommunity} from './shopping-setup.jsx';
-import {whatsappNumber} from './whatsapp-order.mjs';
-import {SHOP_DEPARTMENTS,departmentValue,matchesDepartment,selectionName,paymentForFulfillment} from './shop-departments.mjs';
-import {GROCERY_CATEGORIES,normalizeCategory} from './grocery-categories.mjs';
-import CategoryDirectory,{CategoryIcon} from './category-directory.jsx';
-import React,{useEffect,useMemo,useState,useRef}from'react';
-import {auth,configured,GoogleAuthProvider,signInWithPopup,createUserWithEmailAndPassword,signInWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signInWithPhoneNumber,RecaptchaVerifier,onAuthStateChanged,signOut,updateProfile}from'./firebase.js';
-import StoreCheckout,{OrderConfirmation} from './store-checkout.jsx';
+import {
+  ShoppingWelcome,
+  ShoppingSetup,
+  StoreAccountMenu,
+  StoreCommunity,
+} from './shopping-setup.jsx';
+import { whatsappNumber } from './whatsapp-order.mjs';
+import {
+  SHOP_DEPARTMENTS,
+  departmentValue,
+  matchesDepartment,
+  selectionName,
+  paymentForFulfillment,
+} from './shop-departments.mjs';
+import { GROCERY_CATEGORIES, normalizeCategory } from './grocery-categories.mjs';
+import CategoryDirectory, { CategoryIcon } from './category-directory.jsx';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import {
+  auth,
+  configured,
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  onAuthStateChanged,
+  signOut,
+  updateProfile,
+} from './firebase.js';
+import StoreCheckout, { OrderConfirmation } from './store-checkout.jsx';
 import './market.css';
 import './storefront.css';
-import {useLiveRefresh} from './live.js';
-import {Truck,Store,MapPin,MessageCircle,Users,ShoppingBag,UserRound,Apple,Carrot,Milk,Croissant,Beef,Fish,CupSoda,Wheat,SprayCan} from 'lucide-react';
-const savedFulfillment=()=>{try{return localStorage.getItem('star-mart-fulfillment')==='Delivery'?'Delivery':'Pickup'}catch{return 'Pickup'}};
-const money=n=>'Rs '+(Number(n||0)/100).toLocaleString('en-PK',{maximumFractionDigits:2});
-const qty=n=>(Number(n||0)/1000).toLocaleString('en-PK',{maximumFractionDigits:3});
-function categoryArt(category){return <CategoryIcon name={category}/>}
-export default function Shop({initialSignup=false}){let[selectedProduct,setSelectedProduct]=useState(null);let[products,setProducts]=useState([]),[samples,setSamples]=useState([]),[visible,setVisible]=useState(30),[paymentMethod,setPaymentMethod]=useState(()=>savedFulfillment()==='Delivery'?'Cash on delivery':'Cash on pickup'),[paymentReference,setPaymentReference]=useState(''),[status,setStatus]=useState('loading'),[category,setCategory]=useState('all'),[search,setSearch]=useState(''),[cart,setCart]=useState(()=>{try{return JSON.parse(localStorage.getItem('star-mart-basket')||'{}')}catch{return {}}}),[basketOpen,setBasketOpen]=useState(false),[authOpen,setAuthOpen]=useState(initialSignup),[ordersOpen,setOrdersOpen]=useState(false),[mode,setMode]=useState(initialSignup?'signup':'login'),[method,setMethod]=useState('email'),[user,setUser]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[phone,setPhone]=useState(''),[otp,setOtp]=useState(''),[confirmation,setConfirmation]=useState(null),[fulfillment,setFulfillmentState]=useState(savedFulfillment),[address,setAddress]=useState(''),[note,setNote]=useState(''),[orders,setOrders]=useState([]),[vendorOpen,setVendorOpen]=useState(false),[vendorForm,setVendorForm]=useState({}),[vendorBusy,setVendorBusy]=useState(false),[demoResult,setDemoResult]=useState(null),[placedOrder,setPlacedOrder]=useState(null);let[store,setStore]=useState({});useEffect(()=>{fetch('/api/public/settings').then(r=>r.json()).then(setStore).catch(()=>{})},[]);let[identityReady,setIdentityReady]=useState(false),[preferencesReady,setPreferencesReady]=useState(false),[preference,setPreference]=useState(null),[setupOpen,setSetupOpen]=useState(false),[communityOpen,setCommunityOpen]=useState(false);let verifier=useRef(null),checkoutLock=useRef(false);
-function setFulfillment(value){if(!['Delivery','Pickup'].includes(value))return;setFulfillmentState(value);setPaymentMethod(old=>paymentForFulfillment(old,value));setPaymentReference('')}
-useEffect(()=>{try{localStorage.setItem('star-mart-fulfillment',fulfillment)}catch{}},[fulfillment]);
-useEffect(()=>{if(!user||sessionStorage.getItem('star-checkout-return')!=='1')return;sessionStorage.removeItem('star-checkout-return');try{let d=JSON.parse(sessionStorage.getItem('star-checkout-details')||'{}');if(d.name)setName(d.name);if(d.phone)setPhone(d.phone);setFulfillment(d.fulfillment||'Pickup');setAddress(d.address||'');setNote(d.note||'');setPaymentMethod(d.paymentMethod||'Cash on pickup');setPaymentReference(d.paymentReference||'')}catch{}sessionStorage.removeItem('star-checkout-details');setBasketOpen(true)},[user]);
-async function load(){try{let r=await fetch('/api/public/products',{cache:'no-store'}),j=await r.json();if(!r.ok)throw Error(j.error||'Products unavailable');setProducts(j.products.map(p=>({...p,category:normalizeCategory(p.category)})));setStatus('ready')}catch(e){setStatus(e.message)}}
-useEffect(()=>{const params=new URLSearchParams(location.search);if(params.has('signup')){setMode('signup');location.href='/signup'}if(params.get('vendor')==='apply')location.href='/become-a-vendor'},[]);
+import './storefront-hero.css';
+import { useLiveRefresh } from './live.js';
+import {
+  Truck,
+  Store,
+  MapPin,
+  MessageCircle,
+  Users,
+  ShoppingBag,
+  UserRound,
+  Apple,
+  Carrot,
+  Milk,
+  Croissant,
+  Beef,
+  Fish,
+  CupSoda,
+  Wheat,
+  SprayCan,
+  ArrowUpRight,
+  ArrowRight,
+  Tag,
+} from 'lucide-react';
+const savedFulfillment = () => {
+  try {
+    return localStorage.getItem('star-mart-fulfillment') === 'Delivery' ? 'Delivery' : 'Pickup';
+  } catch {
+    return 'Pickup';
+  }
+};
+const money = n =>
+  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+const qty = n => (Number(n || 0) / 1000).toLocaleString('en-PK', { maximumFractionDigits: 3 });
+function categoryArt(category) {
+  return <CategoryIcon name={category} />;
+}
+export default function Shop({ initialSignup = false }) {
+  let [selectedProduct, setSelectedProduct] = useState(null);
+  let [products, setProducts] = useState([]),
+    [samples, setSamples] = useState([]),
+    [visible, setVisible] = useState(30),
+    [paymentMethod, setPaymentMethod] = useState(() =>
+      savedFulfillment() === 'Delivery' ? 'Cash on delivery' : 'Cash on pickup'
+    ),
+    [paymentReference, setPaymentReference] = useState(''),
+    [status, setStatus] = useState('loading'),
+    [category, setCategory] = useState('all'),
+    [search, setSearch] = useState(''),
+    [cart, setCart] = useState(() => {
+      try {
+        return JSON.parse(localStorage.getItem('star-mart-basket') || '{}');
+      } catch {
+        return {};
+      }
+    }),
+    [basketOpen, setBasketOpen] = useState(false),
+    [authOpen, setAuthOpen] = useState(initialSignup),
+    [ordersOpen, setOrdersOpen] = useState(false),
+    [mode, setMode] = useState(initialSignup ? 'signup' : 'login'),
+    [method, setMethod] = useState('email'),
+    [user, setUser] = useState(null),
+    [error, setError] = useState(''),
+    [notice, setNotice] = useState(''),
+    [busy, setBusy] = useState(false),
+    [name, setName] = useState(''),
+    [email, setEmail] = useState(''),
+    [password, setPassword] = useState(''),
+    [phone, setPhone] = useState(''),
+    [otp, setOtp] = useState(''),
+    [confirmation, setConfirmation] = useState(null),
+    [fulfillment, setFulfillmentState] = useState(savedFulfillment),
+    [address, setAddress] = useState(''),
+    [note, setNote] = useState(''),
+    [orders, setOrders] = useState([]),
+    [vendorOpen, setVendorOpen] = useState(false),
+    [vendorForm, setVendorForm] = useState({}),
+    [vendorBusy, setVendorBusy] = useState(false),
+    [demoResult, setDemoResult] = useState(null),
+    [placedOrder, setPlacedOrder] = useState(null);
+  let [store, setStore] = useState({});
+  useEffect(() => {
+    fetch('/api/public/settings')
+      .then(r => r.json())
+      .then(setStore)
+      .catch(() => {});
+  }, []);
+  let [identityReady, setIdentityReady] = useState(false),
+    [preferencesReady, setPreferencesReady] = useState(false),
+    [preference, setPreference] = useState(null),
+    [setupOpen, setSetupOpen] = useState(false),
+    [communityOpen, setCommunityOpen] = useState(false);
+  let verifier = useRef(null),
+    checkoutLock = useRef(false);
+  function setFulfillment(value) {
+    if (!['Delivery', 'Pickup'].includes(value)) return;
+    setFulfillmentState(value);
+    setPaymentMethod(old => paymentForFulfillment(old, value));
+    setPaymentReference('');
+  }
+  useEffect(() => {
+    try {
+      localStorage.setItem('star-mart-fulfillment', fulfillment);
+    } catch {}
+  }, [fulfillment]);
+  useEffect(() => {
+    if (!user || sessionStorage.getItem('star-checkout-return') !== '1') return;
+    sessionStorage.removeItem('star-checkout-return');
+    try {
+      let d = JSON.parse(sessionStorage.getItem('star-checkout-details') || '{}');
+      if (d.name) setName(d.name);
+      if (d.phone) setPhone(d.phone);
+      setFulfillment(d.fulfillment || 'Pickup');
+      setAddress(d.address || '');
+      setNote(d.note || '');
+      setPaymentMethod(d.paymentMethod || 'Cash on pickup');
+      setPaymentReference(d.paymentReference || '');
+    } catch {}
+    sessionStorage.removeItem('star-checkout-details');
+    setBasketOpen(true);
+  }, [user]);
+  async function load() {
+    try {
+      let r = await fetch('/api/public/products', { cache: 'no-store' }),
+        j = await r.json();
+      if (!r.ok) throw Error(j.error || 'Products unavailable');
+      setProducts(j.products.map(p => ({ ...p, category: normalizeCategory(p.category) })));
+      setStatus('ready');
+    } catch (e) {
+      setStatus(e.message);
+    }
+  }
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has('signup')) {
+      setMode('signup');
+      location.href = '/signup';
+    }
+    if (params.get('vendor') === 'apply') location.href = '/become-a-vendor';
+  }, []);
 
-useEffect(()=>{load()},[]);useLiveRefresh(load);
-useEffect(()=>{fetch('/api/customer/me',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(j=>{if(j?.user){setUser({...j.user,local:true});setName(j.user.name||'');setPhone(j.user.phone||'')}}).catch(()=>{}).finally(()=>setIdentityReady(true))},[]);
-useEffect(()=>{if(!user){setPreferencesReady(false);setPreference(null);return}let active=true;fetch('/api/customer/preferences',{credentials:'same-origin'}).then(r=>{if(!r.ok)throw Error('Could not load shopping preferences');return r.json()}).then(j=>{if(!active)return;const p=j.preference;if(p){setPreference(p);setFulfillment(p.fulfillment);setPhone(p.phone);setAddress(p.address||'')}else setSetupOpen(true);setPreferencesReady(true)}).catch(e=>{if(active){setError(e.message);setSetupOpen(true);setPreferencesReady(true)}});return()=>{active=false}},[user?.id]);
-async function savePreference(p){const response=await fetch('/api/customer/preferences',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(p)}),j=await response.json();if(!response.ok)throw Error(j.error||'Could not save preferences');setPreference(j.preference);setFulfillment(j.preference.fulfillment);setPhone(j.preference.phone);setAddress(j.preference.address||'');setSetupOpen(false);message('Shopping preferences saved.')}
-async function customerLogout(){await fetch('/api/customer/logout',{method:'POST',credentials:'same-origin'});setUser(null);setPreference(null);setSetupOpen(false)}
-useEffect(()=>{if(!authOpen){verifier.current?.clear();verifier.current=null;setConfirmation(null)}},[authOpen]);
-useEffect(()=>{localStorage.setItem('star-mart-basket',JSON.stringify(cart))},[cart]);
-async function applyVendor(e){e.preventDefault();setVendorBusy(true);setError('');try{let r=await fetch('/api/vendor/apply',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(vendorForm)}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not submit request');setVendorForm({});setVendorOpen(false);message('Vendor request sent. After approval, sign in at /vendor with your email and chosen password.')}catch(e){setError(e.message)}finally{setVendorBusy(false)}}
-function message(s){setNotice(s);setTimeout(()=>setNotice(''),3500)}
-function add(id,amount=1){let p=catalog.find(x=>x.id===id),current=Number(cart[id]||0);if(!p){message('Product unavailable.');return}let other=Object.keys(cart).some(key=>{let found=catalog.find(x=>x.id===key);return found&&found.sample!==p.sample});if(other){message('Demo aur real products ke checkout alag hain. Pehle basket clear karo.');return}if(current+amount>(p.sample?10:Number(p.stock_milli)/1000)){message('More stock is not available.');return}setCart({...cart,[id]:current+amount});message(p.name+' added to basket.');return true}
-function adjust(id,delta){let p=catalog.find(x=>x.id===id),next=Number(cart[id]||0)+delta;if(next>(p?.sample?10:Number(p?.stock_milli||0)/1000)){message('Not enough stock.');return}let copy={...cart};if(next<=0)delete copy[id];else copy[id]=next;setCart(copy)}
-const preview=samples.filter(p=>!products.some(real=>real.sku===p.sku||real.name.toLowerCase()===p.name.toLowerCase()));const catalog=[...products,...preview.map(p=>({...p,id:p.sku,sample:true,stock_milli:0}))];
-const items=Object.entries(cart).map(([id,quantity])=>({p:catalog.find(x=>x.id===id),quantity:Number(quantity)})).filter(x=>x.p&&x.quantity>0),total=items.reduce((sum,{p,quantity})=>sum+Math.round(Number(p.price_paisa)*quantity),0),categories=[...new Set([...GROCERY_CATEGORIES,...catalog.map(p=>p.category).filter(Boolean)])],shown=catalog.filter(p=>(matchesDepartment(p.category,category))&&(p.name+' '+p.brand+' '+p.barcode+' '+p.category).toLowerCase().includes(search.toLowerCase()));
-async function authSubmit(e){e.preventDefault();setError('');setBusy(true);try{if(method==='email'&&mode!=='reset'){let response=await fetch('/api/customer/'+(mode==='signup'?'signup':'login'),{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name,email,phone,password})}),result=await response.json();if(!response.ok)throw Error(result.error||'Unable to continue');setUser({...result.user,local:true});setPassword('');setAuthOpen(false);message(mode==='signup'?'Account created successfully.':'Welcome back!');return}if(!configured){throw Error('Password reset and mobile OTP need Firebase configuration.')}if(method==='phone'){if(confirmation){await confirmation.confirm(otp);setAuthOpen(false);setConfirmation(null);message('Signed in with mobile number.')}else{if(!/^\+[1-9]\d{7,14}$/.test(phone))throw Error('Enter mobile number with country code, e.g. +923001234567');verifier.current ||= new RecaptchaVerifier(auth,'recaptcha-container',{size:'normal'});let result=await signInWithPhoneNumber(auth,phone,verifier.current);setConfirmation(result);message('Verification code sent.')}return}if(mode==='reset'){await sendPasswordResetEmail(auth,email);message('Password reset email sent.');setMode('login');return}if(mode==='signup'){let result=await createUserWithEmailAndPassword(auth,email,password);if(name.trim())await updateProfile(result.user,{displayName:name.trim()});await sendEmailVerification(result.user);setAuthOpen(false);message('Account created. Check your email to verify it.')}else{await signInWithEmailAndPassword(auth,email,password);setAuthOpen(false);message('Welcome back!')}}catch(e){setError(e.message?.replace(/^Firebase:\s*/,'')||'Unable to sign in');if(method==='phone'&&!confirmation){verifier.current?.clear();verifier.current=null}}finally{setBusy(false)}}
-async function google(){setError('');if(!configured){setError('Google sign-in needs Firebase configuration.');return}try{setBusy(true);await signInWithPopup(auth,new GoogleAuthProvider());setAuthOpen(false);message('Signed in with Google.')}catch(e){setError(e.message)}finally{setBusy(false)}}
-async function authHeaders(){if(!user)throw Error('Sign in first');return {...(user.getIdToken?{authorization:'Bearer '+await user.getIdToken()}:{}),'content-type':'application/json'}}
-async function checkout(channel='checkout'){setError('');if(items.some(x=>x.p.sample)){if(items.some(x=>!x.p.sample)){setError('Demo and real items must be checked out separately.');return}if(fulfillment==='Delivery'&&!address.trim()){setError('Enter an address for the demo delivery.');return}let result={items:items.map(({p,quantity})=>({name:p.name,quantity})),total,fulfillment,paymentMethod};setDemoResult(result);setCart({});setBasketOpen(false);return}if(!user){sessionStorage.setItem('star-checkout-return','1');sessionStorage.setItem('star-checkout-details',JSON.stringify({name,phone,fulfillment,address,note,paymentMethod,paymentReference}));location.href='/signup';return}if(user?.getIdToken&&user.email&&!user.emailVerified){await user.reload();await user.getIdToken(true);if(!auth.currentUser?.emailVerified){setError('Verify your email address before placing an order.');return}}if(!items.length||checkoutLock.current)return;if(!(name||user?.displayName||user?.name||'').trim()){setError('Enter your name.');return}if(!(phone||user?.phoneNumber||user?.phone||'').trim()){setError('Enter your mobile number.');return}let whatsappWindow=null;try{checkoutLock.current=true;setBusy(true);if(channel==='whatsapp')whatsappWindow=window.open('about:blank','_blank');if(whatsappWindow)whatsappWindow.opener=null;let orderPayload={lines:items.map(({p,quantity})=>({productId:p.id,qty:quantity})),name:name||user?.name||'Customer',phone:phone||user?.phone||'',fulfillment,address,note,paymentMethod,paymentReference};const fingerprint=JSON.stringify({channel,...orderPayload});let attempt;try{attempt=JSON.parse(sessionStorage.getItem('star-order-attempt')||'null')}catch{}if(!attempt||attempt.fingerprint!==fingerprint){attempt={fingerprint,key:crypto.randomUUID()};sessionStorage.setItem('star-order-attempt',JSON.stringify(attempt))}orderPayload.requestKey=attempt.key;let r=await fetch(channel==='whatsapp'?'/api/public/whatsapp-order':'/api/customer/orders',{method:'POST',credentials:'same-origin',headers:user?await authHeaders():{'content-type':'application/json'},body:JSON.stringify(orderPayload)}),j=await r.json();if(!r.ok)throw Error(j.error||'Could not place order');sessionStorage.removeItem('star-order-attempt');if(whatsappWindow&&/^https:\/\/wa\.me\/[0-9]+\?text=/.test(j.whatsappUrl||''))whatsappWindow.location.href=j.whatsappUrl;setPlacedOrder({...j,fulfillment,paymentMethod,channel});setCart({});setBasketOpen(false);setOrdersOpen(false);setPaymentReference('');await load();message('Order '+j.id+' saved. '+(j.paymentStatus||'Payment pending')+'.')}catch(e){whatsappWindow?.close();setError(e.message)}finally{checkoutLock.current=false;setBusy(false)}}
-async function openOrders(){if(!user){location.href='/signup';return}try{setBusy(true);let r=await fetch('/api/customer/orders',{credentials:'same-origin',headers:await authHeaders()}),j=await r.json();if(!r.ok)throw Error(j.error);setOrders(j.orders);setOrdersOpen(true)}catch(e){setError(e.message);location.href='/signup'}finally{setBusy(false)}}
-return <div className="market">
-<div className="announcement"><div className="container">Welcome to Star Mart <span>✦</span> House of Groceries <a href="#products">Browse available items ↗</a></div></div>
-<header className="store-header"><div className="container header-row"><a className="logo" href="/shop"><img className="store-logo" src="/logo.png" alt="Star Mart — House of Groceries"/></a><nav className="main-nav" aria-label="Main navigation"><a href="/shop">Home</a><a href="#categories">Categories</a><a href="#products">Shop</a><a href="/about">About</a><a href="/contact">Contact</a><button onClick={()=>{setError('');location.href='/become-a-vendor'}}>Become a vendor</button></nav><a className="header-cta" href="#products">Shop now ↗</a>{user?<StoreAccountMenu user={user} fulfillment={fulfillment} onChange={()=>setSetupOpen(true)} onLogout={customerLogout}/>:<button className="header-icon account-button" onClick={()=>{setMode('signup');location.href='/signup'}} aria-label="Create account or sign in" title="Create account or sign in"><UserRound size={20}/></button>}<button className="header-icon cart-button" onClick={()=>{setError('');setBasketOpen(true)}} aria-label={'Open basket, '+items.reduce((n,x)=>n+x.quantity,0)+' items'} title="Basket"><ShoppingBag size={20}/><b>{items.reduce((n,x)=>n+x.quantity,0)}</b></button></div></header>
-<main id="home"><section className="hero"><div className="container hero-inner"><div className="hero-text"><span className="hero-tag">YOUR NEIGHBOURHOOD GROCERY STORE</span><h1>Good food.<br/><em>Good every day.</em></h1><p>From pantry favourites to fresh picks, find your everyday groceries in one easy place.</p><a className="shop-button" href="#products">Shop the collection <span>↗</span></a><div className="hero-detail">✦ &nbsp; Browse live prices and available stock</div></div></div></section>
-<CategoryDirectory selected={category} onSelect={name=>{setCategory(name);setSearch('');setVisible(30);document.getElementById('products')?.scrollIntoView({behavior:'smooth'})}}/>
-<section className="container feature-grid" aria-label="Shop highlights"><a className="feature-card feature-fresh" href="#products"><span>FRESH FINDS</span><h2>A little freshness<br/>for every day.</h2><strong>Explore produce ↗</strong></a><a className="feature-card feature-pantry" href="#products"><span>YOUR ESSENTIALS</span><h2>Everything for<br/>the everyday.</h2><strong>Browse the shelves ↗</strong></a><div className="feature-card feature-simple"><span>SHOP WITH EASE</span><h2>See what’s in<br/>stock right now.</h2><p>Our catalog shows current prices and availability.</p><a href="#products">Start shopping ↗</a></div></section>
-<style>{`.market .product-card .sm-product-title{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;color:#181818!important}.market .product-card button.product-image-button{appearance:none!important;-webkit-appearance:none!important;border:0!important;outline:0;box-shadow:none!important;padding:0!important;margin:0!important;width:100%!important;border-radius:0!important;background:#fff!important}.market .product-card button.product-image-button:focus-visible,.market .sm-product-title:focus-visible{outline:2px solid #00745c;outline-offset:-2px}.market .product-card button.product-image-button img{border:0!important;box-shadow:none!important;background:#fff!important}
+  useEffect(() => {
+    load();
+  }, []);
+  useLiveRefresh(load);
+  useEffect(() => {
+    fetch('/api/customer/me', { credentials: 'same-origin' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (j?.user) {
+          setUser({ ...j.user, local: true });
+          setName(j.user.name || '');
+          setPhone(j.user.phone || '');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIdentityReady(true));
+  }, []);
+  useEffect(() => {
+    if (!user) {
+      setPreferencesReady(false);
+      setPreference(null);
+      return;
+    }
+    let active = true;
+    fetch('/api/customer/preferences', { credentials: 'same-origin' })
+      .then(r => {
+        if (!r.ok) throw Error('Could not load shopping preferences');
+        return r.json();
+      })
+      .then(j => {
+        if (!active) return;
+        const p = j.preference;
+        if (p) {
+          setPreference(p);
+          setFulfillment(p.fulfillment);
+          setPhone(p.phone);
+          setAddress(p.address || '');
+        } else setSetupOpen(true);
+        setPreferencesReady(true);
+      })
+      .catch(e => {
+        if (active) {
+          setError(e.message);
+          setSetupOpen(true);
+          setPreferencesReady(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+  async function savePreference(p) {
+    const response = await fetch('/api/customer/preferences', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(p),
+      }),
+      j = await response.json();
+    if (!response.ok) throw Error(j.error || 'Could not save preferences');
+    setPreference(j.preference);
+    setFulfillment(j.preference.fulfillment);
+    setPhone(j.preference.phone);
+    setAddress(j.preference.address || '');
+    setSetupOpen(false);
+    message('Shopping preferences saved.');
+  }
+  async function customerLogout() {
+    await fetch('/api/customer/logout', { method: 'POST', credentials: 'same-origin' });
+    setUser(null);
+    setPreference(null);
+    setSetupOpen(false);
+  }
+  useEffect(() => {
+    if (!authOpen) {
+      verifier.current?.clear();
+      verifier.current = null;
+      setConfirmation(null);
+    }
+  }, [authOpen]);
+  useEffect(() => {
+    localStorage.setItem('star-mart-basket', JSON.stringify(cart));
+  }, [cart]);
+  async function applyVendor(e) {
+    e.preventDefault();
+    setVendorBusy(true);
+    setError('');
+    try {
+      let r = await fetch('/api/vendor/apply', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(vendorForm),
+        }),
+        j = await r.json();
+      if (!r.ok) throw Error(j.error || 'Could not submit request');
+      setVendorForm({});
+      setVendorOpen(false);
+      message(
+        'Vendor request sent. After approval, sign in at /vendor with your email and chosen password.'
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setVendorBusy(false);
+    }
+  }
+  function message(s) {
+    setNotice(s);
+    setTimeout(() => setNotice(''), 3500);
+  }
+  function add(id, amount = 1) {
+    let p = catalog.find(x => x.id === id),
+      current = Number(cart[id] || 0);
+    if (!p) {
+      message('Product unavailable.');
+      return;
+    }
+    let other = Object.keys(cart).some(key => {
+      let found = catalog.find(x => x.id === key);
+      return found && found.sample !== p.sample;
+    });
+    if (other) {
+      message('Demo aur real products ke checkout alag hain. Pehle basket clear karo.');
+      return;
+    }
+    if (current + amount > (p.sample ? 10 : Number(p.stock_milli) / 1000)) {
+      message('More stock is not available.');
+      return;
+    }
+    setCart({ ...cart, [id]: current + amount });
+    message(p.name + ' added to basket.');
+    return true;
+  }
+  function adjust(id, delta) {
+    let p = catalog.find(x => x.id === id),
+      next = Number(cart[id] || 0) + delta;
+    if (next > (p?.sample ? 10 : Number(p?.stock_milli || 0) / 1000)) {
+      message('Not enough stock.');
+      return;
+    }
+    let copy = { ...cart };
+    if (next <= 0) delete copy[id];
+    else copy[id] = next;
+    setCart(copy);
+  }
+  const preview = samples.filter(
+    p =>
+      !products.some(real => real.sku === p.sku || real.name.toLowerCase() === p.name.toLowerCase())
+  );
+  const catalog = [
+    ...products,
+    ...preview.map(p => ({ ...p, id: p.sku, sample: true, stock_milli: 0 })),
+  ];
+  const items = Object.entries(cart)
+      .map(([id, quantity]) => ({ p: catalog.find(x => x.id === id), quantity: Number(quantity) }))
+      .filter(x => x.p && x.quantity > 0),
+    total = items.reduce(
+      (sum, { p, quantity }) => sum + Math.round(Number(p.price_paisa) * quantity),
+      0
+    ),
+    categories = [
+      ...new Set([...GROCERY_CATEGORIES, ...catalog.map(p => p.category).filter(Boolean)]),
+    ],
+    shown = catalog.filter(
+      p =>
+        matchesDepartment(p.category, category) &&
+        (p.name + ' ' + p.brand + ' ' + p.barcode + ' ' + p.category)
+          .toLowerCase()
+          .includes(search.toLowerCase())
+    );
+  async function authSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      if (method === 'email' && mode !== 'reset') {
+        let response = await fetch('/api/customer/' + (mode === 'signup' ? 'signup' : 'login'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name, email, phone, password }),
+          }),
+          result = await response.json();
+        if (!response.ok) throw Error(result.error || 'Unable to continue');
+        setUser({ ...result.user, local: true });
+        setPassword('');
+        setAuthOpen(false);
+        message(mode === 'signup' ? 'Account created successfully.' : 'Welcome back!');
+        return;
+      }
+      if (!configured) {
+        throw Error('Password reset and mobile OTP need Firebase configuration.');
+      }
+      if (method === 'phone') {
+        if (confirmation) {
+          await confirmation.confirm(otp);
+          setAuthOpen(false);
+          setConfirmation(null);
+          message('Signed in with mobile number.');
+        } else {
+          if (!/^\+[1-9]\d{7,14}$/.test(phone))
+            throw Error('Enter mobile number with country code, e.g. +923001234567');
+          verifier.current ||= new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'normal',
+          });
+          let result = await signInWithPhoneNumber(auth, phone, verifier.current);
+          setConfirmation(result);
+          message('Verification code sent.');
+        }
+        return;
+      }
+      if (mode === 'reset') {
+        await sendPasswordResetEmail(auth, email);
+        message('Password reset email sent.');
+        setMode('login');
+        return;
+      }
+      if (mode === 'signup') {
+        let result = await createUserWithEmailAndPassword(auth, email, password);
+        if (name.trim()) await updateProfile(result.user, { displayName: name.trim() });
+        await sendEmailVerification(result.user);
+        setAuthOpen(false);
+        message('Account created. Check your email to verify it.');
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        setAuthOpen(false);
+        message('Welcome back!');
+      }
+    } catch (e) {
+      setError(e.message?.replace(/^Firebase:\s*/, '') || 'Unable to sign in');
+      if (method === 'phone' && !confirmation) {
+        verifier.current?.clear();
+        verifier.current = null;
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function google() {
+    setError('');
+    if (!configured) {
+      setError('Google sign-in needs Firebase configuration.');
+      return;
+    }
+    try {
+      setBusy(true);
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      setAuthOpen(false);
+      message('Signed in with Google.');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function authHeaders() {
+    if (!user) throw Error('Sign in first');
+    return {
+      ...(user.getIdToken ? { authorization: 'Bearer ' + (await user.getIdToken()) } : {}),
+      'content-type': 'application/json',
+    };
+  }
+  async function checkout(channel = 'checkout') {
+    setError('');
+    if (items.some(x => x.p.sample)) {
+      if (items.some(x => !x.p.sample)) {
+        setError('Demo and real items must be checked out separately.');
+        return;
+      }
+      if (fulfillment === 'Delivery' && !address.trim()) {
+        setError('Enter an address for the demo delivery.');
+        return;
+      }
+      let result = {
+        items: items.map(({ p, quantity }) => ({ name: p.name, quantity })),
+        total,
+        fulfillment,
+        paymentMethod,
+      };
+      setDemoResult(result);
+      setCart({});
+      setBasketOpen(false);
+      return;
+    }
+    if (!user) {
+      sessionStorage.setItem('star-checkout-return', '1');
+      sessionStorage.setItem(
+        'star-checkout-details',
+        JSON.stringify({ name, phone, fulfillment, address, note, paymentMethod, paymentReference })
+      );
+      location.href = '/signup';
+      return;
+    }
+    if (user?.getIdToken && user.email && !user.emailVerified) {
+      await user.reload();
+      await user.getIdToken(true);
+      if (!auth.currentUser?.emailVerified) {
+        setError('Verify your email address before placing an order.');
+        return;
+      }
+    }
+    if (!items.length || checkoutLock.current) return;
+    if (!(name || user?.displayName || user?.name || '').trim()) {
+      setError('Enter your name.');
+      return;
+    }
+    if (!(phone || user?.phoneNumber || user?.phone || '').trim()) {
+      setError('Enter your mobile number.');
+      return;
+    }
+    let whatsappWindow = null;
+    try {
+      checkoutLock.current = true;
+      setBusy(true);
+      if (channel === 'whatsapp') whatsappWindow = window.open('about:blank', '_blank');
+      if (whatsappWindow) whatsappWindow.opener = null;
+      let orderPayload = {
+        lines: items.map(({ p, quantity }) => ({ productId: p.id, qty: quantity })),
+        name: name || user?.name || 'Customer',
+        phone: phone || user?.phone || '',
+        fulfillment,
+        address,
+        note,
+        paymentMethod,
+        paymentReference,
+      };
+      const fingerprint = JSON.stringify({ channel, ...orderPayload });
+      let attempt;
+      try {
+        attempt = JSON.parse(sessionStorage.getItem('star-order-attempt') || 'null');
+      } catch {}
+      if (!attempt || attempt.fingerprint !== fingerprint) {
+        attempt = { fingerprint, key: crypto.randomUUID() };
+        sessionStorage.setItem('star-order-attempt', JSON.stringify(attempt));
+      }
+      orderPayload.requestKey = attempt.key;
+      let r = await fetch(
+          channel === 'whatsapp' ? '/api/public/whatsapp-order' : '/api/customer/orders',
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: user ? await authHeaders() : { 'content-type': 'application/json' },
+            body: JSON.stringify(orderPayload),
+          }
+        ),
+        j = await r.json();
+      if (!r.ok) throw Error(j.error || 'Could not place order');
+      sessionStorage.removeItem('star-order-attempt');
+      if (whatsappWindow && /^https:\/\/wa\.me\/[0-9]+\?text=/.test(j.whatsappUrl || ''))
+        whatsappWindow.location.href = j.whatsappUrl;
+      setPlacedOrder({ ...j, fulfillment, paymentMethod, channel });
+      setCart({});
+      setBasketOpen(false);
+      setOrdersOpen(false);
+      setPaymentReference('');
+      await load();
+      message('Order ' + j.id + ' saved. ' + (j.paymentStatus || 'Payment pending') + '.');
+    } catch (e) {
+      whatsappWindow?.close();
+      setError(e.message);
+    } finally {
+      checkoutLock.current = false;
+      setBusy(false);
+    }
+  }
+  async function openOrders() {
+    if (!user) {
+      location.href = '/signup';
+      return;
+    }
+    try {
+      setBusy(true);
+      let r = await fetch('/api/customer/orders', {
+          credentials: 'same-origin',
+          headers: await authHeaders(),
+        }),
+        j = await r.json();
+      if (!r.ok) throw Error(j.error);
+      setOrders(j.orders);
+      setOrdersOpen(true);
+    } catch (e) {
+      setError(e.message);
+      location.href = '/signup';
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="market">
+      <div className="announcement">
+        <div className="container">
+          Welcome to Star Mart <span>✦</span> House of Groceries{' '}
+          <a href="#products">Browse available items ↗</a>
+        </div>
+      </div>
+      <header className="store-header">
+        <div className="container header-row">
+          <a className="logo" href="/shop">
+            <img className="store-logo" src="/logo.png" alt="Star Mart — House of Groceries" />
+          </a>
+          <nav className="main-nav" aria-label="Main navigation">
+            <a href="/shop">Home</a>
+            <a href="#categories">Categories</a>
+            <a href="#products">Shop</a>
+            <a href="/about">About</a>
+            <a href="/contact">Contact</a>
+            <button
+              onClick={() => {
+                setError('');
+                location.href = '/become-a-vendor';
+              }}
+            >
+              Become a vendor
+            </button>
+          </nav>
+          <a className="header-cta" href="#products">
+            Shop now ↗
+          </a>
+          {user ? (
+            <StoreAccountMenu
+              user={user}
+              fulfillment={fulfillment}
+              onChange={() => setSetupOpen(true)}
+              onLogout={customerLogout}
+            />
+          ) : (
+            <button
+              className="header-icon account-button"
+              onClick={() => {
+                setMode('signup');
+                location.href = '/signup';
+              }}
+              aria-label="Create account or sign in"
+              title="Create account or sign in"
+            >
+              <UserRound size={20} />
+            </button>
+          )}
+          <button
+            className="header-icon cart-button"
+            onClick={() => {
+              setError('');
+              setBasketOpen(true);
+            }}
+            aria-label={'Open basket, ' + items.reduce((n, x) => n + x.quantity, 0) + ' items'}
+            title="Basket"
+          >
+            <ShoppingBag size={20} />
+            <b>{items.reduce((n, x) => n + x.quantity, 0)}</b>
+          </button>
+        </div>
+      </header>
+      <main id="home">
+        <section className="hero" aria-labelledby="hero-title">
+          <div className="container hero-inner">
+            <div className="hero-text">
+              <span className="hero-tag">Your neighbourhood grocery store</span>
+              <h1 id="hero-title">
+                Good food.
+                <br />
+                <em>Good every day.</em>
+              </h1>
+              <p>
+                From pantry favourites to fresh picks, find your everyday groceries in one easy
+                place.
+              </p>
+              <div className="hero-actions">
+                <a className="shop-button" href="#products">
+                  Shop the collection <ArrowUpRight size={18} aria-hidden="true" />
+                </a>
+                <a className="hero-secondary" href="#categories">
+                  Browse categories <ArrowRight size={16} aria-hidden="true" />
+                </a>
+              </div>
+              <ul className="hero-proof" aria-label="Why shop with Star Mart">
+                <li>
+                  <Tag size={15} aria-hidden="true" />
+                  Live prices &amp; stock
+                </li>
+                <li>
+                  <Truck size={15} aria-hidden="true" />
+                  Delivery or self pickup
+                </li>
+                <li>
+                  <MessageCircle size={15} aria-hidden="true" />
+                  Order on WhatsApp
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <CategoryDirectory
+          selected={category}
+          onSelect={name => {
+            setCategory(name);
+            setSearch('');
+            setVisible(30);
+            document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+        <section className="container feature-grid" aria-label="Shop highlights">
+          <a className="feature-card feature-fresh" href="#products">
+            <span>FRESH FINDS</span>
+            <h2>
+              A little freshness
+              <br />
+              for every day.
+            </h2>
+            <strong>Explore produce ↗</strong>
+          </a>
+          <a className="feature-card feature-pantry" href="#products">
+            <span>YOUR ESSENTIALS</span>
+            <h2>
+              Everything for
+              <br />
+              the everyday.
+            </h2>
+            <strong>Browse the shelves ↗</strong>
+          </a>
+          <div className="feature-card feature-simple">
+            <span>SHOP WITH EASE</span>
+            <h2>
+              See what’s in
+              <br />
+              stock right now.
+            </h2>
+            <p>Our catalog shows current prices and availability.</p>
+            <a href="#products">Start shopping ↗</a>
+          </div>
+        </section>
+        <style>{`.market .product-card .sm-product-title{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;color:#181818!important}.market .product-card button.product-image-button{appearance:none!important;-webkit-appearance:none!important;border:0!important;outline:0;box-shadow:none!important;padding:0!important;margin:0!important;width:100%!important;border-radius:0!important;background:#fff!important}.market .product-card button.product-image-button:focus-visible,.market .sm-product-title:focus-visible{outline:2px solid #00745c;outline-offset:-2px}.market .product-card button.product-image-button img{border:0!important;box-shadow:none!important;background:#fff!important}
 .market .product-grid{gap:16px}.market .product-card{border:1px solid #e4ebe7;border-radius:15px;box-shadow:0 3px 12px #003e3007;transition:transform .18s,box-shadow .18s,border-color .18s}.market .product-card:hover{transform:translateY(-3px);border-color:#b9d8cc;box-shadow:0 8px 22px #003e3010}.market .product-card button.product-image-button{height:160px!important}.market .product-card button.product-image-button img{object-fit:contain!important;padding:12px;box-sizing:border-box}.market .product-card .product-content{padding:13px 14px;gap:0}.market .product-card .product-content small{font-size:10px;line-height:1.4;color:#00745c}.market .product-card .sm-product-title{font-size:15px;line-height:1.35;letter-spacing:-.015em;min-height:0;margin:6px 0 5px;font-weight:700}.market .product-card .product-content p{font-size:11px;line-height:1.4;margin:0 0 12px;color:#454545}.market .product-card .price-row{gap:8px;padding-top:10px;border-top:1px solid #edf1ee}.market .product-card .price-row strong{font-size:15px}.market .product-card .price-row button{font-size:11px;padding:8px 10px;border-radius:8px;background:#00745c;color:#fff}.market .product-card .price-row button:hover{background:#005a47}.market .product-card .price-row button:disabled{background:#f2f4f3;color:#666;cursor:not-allowed}
 .pd-dialog{width:min(640px,100%);border-radius:18px;grid-template-columns:44% 56%;border:1px solid #e2eae5}.pd-image{min-height:230px;padding:20px;background:#f5f8f6}.pd-image img{height:220px}.pd-content{padding:34px 22px 22px;color:#181818}.pd-content h2{font-size:21px;line-height:1.25;margin:7px 0}.pd-category{font-size:10px;line-height:1.4;display:block;padding-right:15px}.pd-content p{font-size:12px;line-height:1.45;margin:6px 0;color:#444}.pd-price{font-size:23px;margin:12px 0 8px}.pd-stock{font-size:10px;padding:5px 9px}.pd-quantity{margin:10px 0;font-size:12px}.pd-quantity>div{margin:6px 0;gap:6px}.pd-quantity input{padding:7px;width:70px}.pd-quantity button{width:32px}.pd-add,.pd-view{padding:11px;font-size:12px;margin-top:9px;border-radius:9px}.pd-view{background:#fff;color:#00745c;border:1px solid #b8d8cd}.pd-view:hover{background:#edf7f2}.pd-add:hover:not(:disabled){background:#005a47}.pd-close{width:30px;height:30px;top:10px;right:10px;color:#181818}
 @media(max-width:600px){.pd-dialog{grid-template-columns:1fr;width:min(380px,100%)}.pd-image{min-height:0;padding:14px}.pd-image img{height:145px}.pd-content{padding:16px 20px 20px}.pd-content h2{font-size:20px}.market .product-card button.product-image-button{height:130px!important}.market .product-card .product-content{padding:11px}.market .product-card .sm-product-title{font-size:14px}.market .product-card .price-row{flex-wrap:wrap}.market .product-card .price-row button{flex:1;white-space:nowrap}}
 
 .market .product-card{border-radius:12px;border:1px solid #e4e9e6;box-shadow:none}.market .product-card:hover{border-color:#ffc1b7;box-shadow:0 6px 18px #fc26000c;transform:translateY(-2px)}.market .product-card button.product-image-button{height:145px!important;background:#fafbfaff!important}.market .product-card button.product-image-button img{padding:10px!important;background:transparent!important}.market .product-card .product-content{padding:12px 14px}.market .product-card .product-content small{font-size:10px;line-height:1.3;color:#00745c}.market .product-card .sm-product-title{font-size:15px;line-height:1.3;margin:5px 0 4px!important;min-height:0!important}.market .product-card .product-content p{margin:0 0 9px!important;font-size:11px;line-height:1.3;color:#454545}.market .product-card .price-row{padding-top:9px;margin-top:0;gap:8px}.market .product-card .price-row button,.market .checkout,.market .shop-button,.pd-add{background:#fc2600!important;color:#fff!important;border:0}.market .product-card .price-row button:hover:not(:disabled),.market .checkout:hover:not(:disabled),.market .shop-button:hover{background:#de2100!important}.market .product-card .price-row button:disabled{background:#f2f4f3!important;color:#737373!important}.market .product-card .price-row strong{font-size:16px;color:#00745c}.market .product-card .product-content{flex:initial}.market .product-card{align-self:start}@media(max-width:600px){.market .product-card button.product-image-button{height:125px!important}.market .product-card .product-content{padding:11px}.market .product-card .price-row button{font-size:11px}}
 `}</style>
-<section className="section container products-section" id="products"><div className="section-heading products-heading"><div><span className="kicker">THE STAR MART SELECTION</span><h2>Shop our products</h2><p>Available stock is live. Browse products supplied to Star Mart. Actual orders require available stock.</p></div><div className="search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} type="search" placeholder="Search products or barcode" aria-label="Search products"/></div></div><div className="filter-tabs" aria-label="Filter products"><button className={category==='all'?'active':''} onClick={()=>setCategory('all')}>All products</button><select value={category} onChange={e=>{setCategory(e.target.value);setVisible(30)}} aria-label="Product category"><option value="all">Shop by department</option>{SHOP_DEPARTMENTS.map(d=><optgroup key={d.id} label={d.name}><option value={departmentValue(d.id)}>All {d.name}</option>{d.categories.filter(c=>categories.includes(c)).map(c=><option key={c} value={c}>{c}</option>)}</optgroup>)}{categories.filter(c=>!SHOP_DEPARTMENTS.some(d=>d.categories.includes(c))).map(c=><option key={c} value={c}>{c}</option>)}</select>{category!=='all'&&<span className="selected-aisle">{selectionName(category)}</span>}</div>{status!=='ready'?<div className="empty-products">{status==='loading'?'Loading catalog…':status}</div>:<div className="product-grid">{shown.length?shown.slice(0,visible).map(p=><article className="product-card" key={p.id}><button type="button" className="product-image product-image-button" style={{border:0,padding:0,margin:0,boxShadow:"none",opacity:1,appearance:"none",width:"100%",borderRadius:0}} disabled={!p.sample&&Number(p.stock_milli)<1000} aria-label={'View '+p.name} onClick={()=>setSelectedProduct(p)}>{p.image?<img src={p.image} alt={p.name} loading="lazy" onError={e=>e.currentTarget.style.display='none'}/>:<span>{categoryArt(p.category)}</span>}</button><div className="product-content"><small>{p.sample?'DEMO · ':''}{p.category||'Everyday essentials'} · {p.brand||'Star Mart'}</small><h3 className="sm-product-title" role="button" tabIndex={!p.sample&&Number(p.stock_milli)<1000?-1:0} aria-disabled={!p.sample&&Number(p.stock_milli)<1000} onClick={()=>setSelectedProduct(p)} onKeyDown={e=>{if((e.key==='Enter'||e.key===' ')&&(p.sample||Number(p.stock_milli)>=1000)){e.preventDefault();setSelectedProduct(p)}}} style={{background:'transparent',border:0,boxShadow:'none',color:'#181818',cursor:'pointer'}}>{p.name}</h3><p>{p.pack_size||p.unit} · {p.sample?'Illustrative listing':qty(p.stock_milli)+' in stock'}</p><div className="price-row"><strong>{p.sample?'Example '+money(p.price_paisa):money(p.price_paisa)}</strong><button disabled={!p.sample&&Number(p.stock_milli)<1000} onClick={()=>setSelectedProduct(p)} aria-label={'View '+p.name+' and add to basket'}>{p.sample?'Try demo cart +':Number(p.stock_milli)<1000?'Out of stock':'Add to cart +'}</button></div></div></article>):<div className="empty-products"><strong>No products in this selection yet.</strong>Try another search or category.</div>}</div>}{shown.length>visible&&<button className="sample-more" onClick={()=>setVisible(visible+30)}>Show more products</button>}<div className="catalog-count">Showing {Math.min(shown.length,visible)} of {shown.length} items · {products.filter(p=>Number(p.stock_milli)>0).length} currently available</div></section>
-<section className="story" id="story"><div className="container story-inner"><div className="story-photo"><img src="/produce.png" alt="Basket of fresh produce" loading="lazy"/></div><div className="story-copy"><span className="kicker">A BETTER WAY TO SHOP</span><h2>Your whole grocery list, all in one place.</h2><p>Star Mart brings groceries and daily essentials together. Browse what is available, add items to your basket and place a pickup or delivery request.</p><a className="shop-button" href="#products">Explore the store ↗</a></div></div></section>
-<section className="benefits"><div className="container benefits-row"><div><span>✦</span><strong>Everyday selection</strong><small>Groceries for your routine</small></div><div><span>▣</span><strong>Live availability</strong><small>See current store stock</small></div><div><span>♡</span><strong>Simple ordering</strong><small>Request pickup or delivery</small></div></div></section></main>
-<footer><div className="container footer-main"><div><a className="logo" href="/shop"><img className="store-logo" src="/logo.png" alt="Star Mart"/></a><p>House of Groceries. Everyday essentials made easy.</p>{store.phone&&<a href={'tel:'+store.phone}>{store.phone}</a>}{store.address&&<p>{store.address}</p>}{store.hours&&<p>{store.hours}</p>}</div><div><strong>Explore</strong><a href="#categories">Categories</a><a href="#products">Products</a><a href="/about">About Star Mart</a><a href="/contact">Contact us</a></div><div><strong>Work with us</strong><button onClick={()=>{setError('');location.href='/become-a-vendor'}}>Become a vendor</button><a href="/vendor">Vendor sign in</a><a href="/staff">Staff sign in</a><a href="/admin">Owner sign in</a></div><div><strong>Your account</strong><button onClick={()=>user?location.href='/account':(setMode('signup'),location.href='/signup')}>{user?'My dashboard':'Create account'}</button><button onClick={()=>{setError('');setBasketOpen(true)}}>Your basket</button></div></div><div className="container footer-bottom">© {new Date().getFullYear()} Star Mart · House of Groceries <a href="/category-photos/credits.html" target="_blank" rel="noopener noreferrer">Photo credits</a><a href="/shop">Back to top ↑</a></div></footer>{notice&&<div className="toast show" role="status">{notice}</div>}
-<div className="store-floating-contact"><button type="button" className="store-community-float" onClick={()=>setCommunityOpen(true)}><Users size={20}/><span>Community</span></button>{whatsappNumber(store.whatsapp||store.phone)?<a className="store-whatsapp-float" href={'https://wa.me/'+whatsappNumber(store.whatsapp||store.phone)} target="_blank" rel="noopener noreferrer"><MessageCircle size={22}/><span>WhatsApp</span></a>:<button type="button" className="store-whatsapp-float" onClick={()=>setCommunityOpen(true)}><MessageCircle size={22}/><span>WhatsApp</span></button>}</div>{identityReady&&!user&&<ShoppingWelcome/>}{user&&preferencesReady&&setupOpen&&<ShoppingSetup initial={preference||{fulfillment,phone,address}} store={store} onSave={savePreference} onClose={preference?()=>setSetupOpen(false):undefined}/>} {communityOpen&&<StoreCommunity store={store} onClose={()=>setCommunityOpen(false)}/>}{vendorOpen&&<div className="market-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setVendorOpen(false)}}><div className="market-modal"><button className="modal-close" onClick={()=>setVendorOpen(false)} aria-label="Close">×</button><span className="kicker">SUPPLY STAR MART</span><h2>Become a vendor</h2><div className="vendor-login-link">Already approved? <a href="/vendor">Vendor sign in →</a></div><p className="auth-note">Send your details. The owner will review your request, activate your account. You choose your own password.</p><form className="auth-form" onSubmit={applyVendor}>{[['business','Business name'],['contact','Contact person'],['email','Email'],['phone','Phone number'],['password','Create password'],['address','Address'],['note','Products you supply']].map(([key,label])=><label key={key}>{label}<input value={vendorForm[key]||''} onChange={e=>setVendorForm({...vendorForm,[key]:e.target.value})} type={key==='password'?'password':key==='email'?'email':key==='phone'?'tel':'text'} minLength={key==='password'?8:undefined} required={['business','contact','email','phone','password'].includes(key)}/></label>)}{error&&<div className="auth-error">{error}</div>}<button className="checkout" disabled={vendorBusy}>{vendorBusy?'Sending…':'Send vendor request'}</button></form></div></div>}
-{selectedProduct&&<ProductDetail product={selectedProduct} quantity={Number(cart[selectedProduct.id]||0)} onAdd={(id,amount)=>add(id,amount)} onQuantity={n=>adjust(selectedProduct.id,n-Number(cart[selectedProduct.id]||0))} onCart={()=>{setSelectedProduct(null);setBasketOpen(true)}} onClose={()=>setSelectedProduct(null)}/>}
-{basketOpen&&<StoreCheckout items={items} total={total} busy={busy} error={error} user={user} name={name} setName={setName} phone={phone} setPhone={setPhone} fulfillment={fulfillment} setFulfillment={setFulfillment} address={address} setAddress={setAddress} note={note} setNote={setNote} paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} paymentReference={paymentReference} setPaymentReference={setPaymentReference} adjust={adjust} remove={id=>setCart(old=>{let next={...old};delete next[id];return next})} onClose={()=>{setBasketOpen(false);setError('')}} onSubmit={()=>checkout('checkout')} onWhatsApp={()=>checkout('whatsapp')}/>}
-{placedOrder&&<OrderConfirmation order={placedOrder} onClose={()=>setPlacedOrder(null)}/>}
-{demoResult&&<div className="market-overlay"><div className="market-modal"><button className="modal-close" onClick={()=>setDemoResult(null)} aria-label="Close">×</button><span className="kicker">CHECKOUT PREVIEW</span><h2>Demo checkout complete</h2><p>Ye sirf test tha. Koi order admin ko nahi gaya, payment collect nahi hui aur stock change nahi hua.</p><div className="basket-total"><span>Example total</span><strong>{money(demoResult.total)}</strong></div><p>{demoResult.fulfillment} · {demoResult.paymentMethod}</p><ul>{demoResult.items.map((item,i)=><li key={i}>{item.name} × {item.quantity}</li>)}</ul><button className="checkout" onClick={()=>setDemoResult(null)}>Continue shopping</button></div></div>}
-{authOpen&&<div className="market-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setAuthOpen(false)}}><div className="market-modal"><button className="modal-close" onClick={()=>setAuthOpen(false)} aria-label="Close">×</button><span className="kicker">STAR MART ACCOUNT</span><h2>{mode==='signup'?'Create your Star Mart account':mode==='reset'?'Reset password':'Sign in to Star Mart'}</h2>{configured&&<div className="auth-tabs"><button className={method==='email'?'active':''} onClick={()=>{setMethod('email');setError('')}}>Email</button>{configured&&<button className={method==='phone'?'active':''} onClick={()=>{setMethod('phone');setError('')}}>Mobile OTP</button>}</div>}{method==='email'&&configured&&<button className="social-button" onClick={google} disabled={busy}>Continue with Google</button>}<form className="auth-form" onSubmit={authSubmit}>{method==='email'?<>{mode==='signup'&&<><label>Full name<input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" required/></label><label>Mobile number (optional)<input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0300 1234567" autoComplete="tel"/></label></>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>{mode!=='reset'&&<label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={mode==='signup'?8:1} required/></label>}</>:<><label>Mobile number with country code<input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+923001234567" required/></label>{confirmation&&<label>SMS verification code<input value={otp} onChange={e=>setOtp(e.target.value)} inputMode="numeric" required/></label>}<div id="recaptcha-container"/></>}{error&&<div className="auth-error">{error}</div>}<button className="checkout" disabled={busy||(method==='phone'&&!configured)}>{busy?'Please wait…':method==='phone'?(confirmation?'Verify code':'Send code'):mode==='signup'?'Create account':mode==='reset'?'Send reset link':'Sign in'}</button></form>{method==='email'&&<div className="auth-switch">{mode==='login'?<><button onClick={()=>setMode('signup')}>Create account</button>{configured&&<button onClick={()=>setMode('reset')}>Forgot password?</button>}</>:<button onClick={()=>setMode('login')}>Back to sign in</button>}</div>}<p className="auth-note">Customer orders use your own account. Vendor? <a href="/vendor">Sign in to vendor panel</a>.</p></div></div>}
-{ordersOpen&&<div className="market-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setOrdersOpen(false)}}><div className="market-modal"><button className="modal-close" onClick={()=>setOrdersOpen(false)} aria-label="Close">×</button><span className="kicker">YOUR ACCOUNT</span><h2>My orders</h2>{orders.length?orders.map(o=><div className="order-card" key={o.id}><strong>{o.id} · {money(o.total_paisa)}</strong><small>{o.status} · {o.payment_method} · {o.payment_status} · {o.fulfillment} · {new Date(o.created_at).toLocaleString('en-PK')}</small><small>{o.items.map(i=>i.name+' × '+qty(i.qty_milli)).join(', ')}</small></div>):<div className="empty-products">No orders yet.</div>}<button className="social-button" onClick={async()=>{if(user?.local)await fetch('/api/customer/logout',{method:'POST',credentials:'same-origin'});else if(auth)await signOut(auth);setUser(null);setOrdersOpen(false);message('Signed out.')}}>Sign out</button></div></div>}</div>}
+        <section className="section container products-section" id="products">
+          <div className="section-heading products-heading">
+            <div>
+              <span className="kicker">THE STAR MART SELECTION</span>
+              <h2>Shop our products</h2>
+              <p>
+                Available stock is live. Browse products supplied to Star Mart. Actual orders
+                require available stock.
+              </p>
+            </div>
+            <div className="search">
+              <span>⌕</span>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                type="search"
+                placeholder="Search products or barcode"
+                aria-label="Search products"
+              />
+            </div>
+          </div>
+          <div className="filter-tabs" aria-label="Filter products">
+            <button
+              className={category === 'all' ? 'active' : ''}
+              onClick={() => setCategory('all')}
+            >
+              All products
+            </button>
+            <select
+              value={category}
+              onChange={e => {
+                setCategory(e.target.value);
+                setVisible(30);
+              }}
+              aria-label="Product category"
+            >
+              <option value="all">Shop by department</option>
+              {SHOP_DEPARTMENTS.map(d => (
+                <optgroup key={d.id} label={d.name}>
+                  <option value={departmentValue(d.id)}>All {d.name}</option>
+                  {d.categories
+                    .filter(c => categories.includes(c))
+                    .map(c => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+              {categories
+                .filter(c => !SHOP_DEPARTMENTS.some(d => d.categories.includes(c)))
+                .map(c => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+            </select>
+            {category !== 'all' && (
+              <span className="selected-aisle">{selectionName(category)}</span>
+            )}
+          </div>
+          {status !== 'ready' ? (
+            <div className="empty-products">
+              {status === 'loading' ? 'Loading catalog…' : status}
+            </div>
+          ) : (
+            <div className="product-grid">
+              {shown.length ? (
+                shown.slice(0, visible).map(p => (
+                  <article className="product-card" key={p.id}>
+                    <button
+                      type="button"
+                      className="product-image product-image-button"
+                      style={{
+                        border: 0,
+                        padding: 0,
+                        margin: 0,
+                        boxShadow: 'none',
+                        opacity: 1,
+                        appearance: 'none',
+                        width: '100%',
+                        borderRadius: 0,
+                      }}
+                      disabled={!p.sample && Number(p.stock_milli) < 1000}
+                      aria-label={'View ' + p.name}
+                      onClick={() => setSelectedProduct(p)}
+                    >
+                      {p.image ? (
+                        <img
+                          src={p.image}
+                          alt={p.name}
+                          loading="lazy"
+                          onError={e => (e.currentTarget.style.display = 'none')}
+                        />
+                      ) : (
+                        <span>{categoryArt(p.category)}</span>
+                      )}
+                    </button>
+                    <div className="product-content">
+                      <small>
+                        {p.sample ? 'DEMO · ' : ''}
+                        {p.category || 'Everyday essentials'} · {p.brand || 'Star Mart'}
+                      </small>
+                      <h3
+                        className="sm-product-title"
+                        role="button"
+                        tabIndex={!p.sample && Number(p.stock_milli) < 1000 ? -1 : 0}
+                        aria-disabled={!p.sample && Number(p.stock_milli) < 1000}
+                        onClick={() => setSelectedProduct(p)}
+                        onKeyDown={e => {
+                          if (
+                            (e.key === 'Enter' || e.key === ' ') &&
+                            (p.sample || Number(p.stock_milli) >= 1000)
+                          ) {
+                            e.preventDefault();
+                            setSelectedProduct(p);
+                          }
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 0,
+                          boxShadow: 'none',
+                          color: '#181818',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {p.name}
+                      </h3>
+                      <p>
+                        {p.pack_size || p.unit} ·{' '}
+                        {p.sample ? 'Illustrative listing' : qty(p.stock_milli) + ' in stock'}
+                      </p>
+                      <div className="price-row">
+                        <strong>
+                          {p.sample ? 'Example ' + money(p.price_paisa) : money(p.price_paisa)}
+                        </strong>
+                        <button
+                          disabled={!p.sample && Number(p.stock_milli) < 1000}
+                          onClick={() => setSelectedProduct(p)}
+                          aria-label={'View ' + p.name + ' and add to basket'}
+                        >
+                          {p.sample
+                            ? 'Try demo cart +'
+                            : Number(p.stock_milli) < 1000
+                              ? 'Out of stock'
+                              : 'Add to cart +'}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="empty-products">
+                  <strong>No products in this selection yet.</strong>Try another search or category.
+                </div>
+              )}
+            </div>
+          )}
+          {shown.length > visible && (
+            <button className="sample-more" onClick={() => setVisible(visible + 30)}>
+              Show more products
+            </button>
+          )}
+          <div className="catalog-count">
+            Showing {Math.min(shown.length, visible)} of {shown.length} items ·{' '}
+            {products.filter(p => Number(p.stock_milli) > 0).length} currently available
+          </div>
+        </section>
+        <section className="story" id="story">
+          <div className="container story-inner">
+            <div className="story-photo">
+              <img src="/produce.png" alt="Basket of fresh produce" loading="lazy" />
+            </div>
+            <div className="story-copy">
+              <span className="kicker">A BETTER WAY TO SHOP</span>
+              <h2>Your whole grocery list, all in one place.</h2>
+              <p>
+                Star Mart brings groceries and daily essentials together. Browse what is available,
+                add items to your basket and place a pickup or delivery request.
+              </p>
+              <a className="shop-button" href="#products">
+                Explore the store ↗
+              </a>
+            </div>
+          </div>
+        </section>
+        <section className="benefits">
+          <div className="container benefits-row">
+            <div>
+              <span>✦</span>
+              <strong>Everyday selection</strong>
+              <small>Groceries for your routine</small>
+            </div>
+            <div>
+              <span>▣</span>
+              <strong>Live availability</strong>
+              <small>See current store stock</small>
+            </div>
+            <div>
+              <span>♡</span>
+              <strong>Simple ordering</strong>
+              <small>Request pickup or delivery</small>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <div className="container footer-main">
+          <div>
+            <a className="logo" href="/shop">
+              <img className="store-logo" src="/logo.png" alt="Star Mart" />
+            </a>
+            <p>House of Groceries. Everyday essentials made easy.</p>
+            {store.phone && <a href={'tel:' + store.phone}>{store.phone}</a>}
+            {store.address && <p>{store.address}</p>}
+            {store.hours && <p>{store.hours}</p>}
+          </div>
+          <div>
+            <strong>Explore</strong>
+            <a href="#categories">Categories</a>
+            <a href="#products">Products</a>
+            <a href="/about">About Star Mart</a>
+            <a href="/contact">Contact us</a>
+          </div>
+          <div>
+            <strong>Work with us</strong>
+            <button
+              onClick={() => {
+                setError('');
+                location.href = '/become-a-vendor';
+              }}
+            >
+              Become a vendor
+            </button>
+            <a href="/vendor">Vendor sign in</a>
+            <a href="/staff">Staff sign in</a>
+            <a href="/admin">Owner sign in</a>
+          </div>
+          <div>
+            <strong>Your account</strong>
+            <button
+              onClick={() =>
+                user
+                  ? (location.href = '/account')
+                  : (setMode('signup'), (location.href = '/signup'))
+              }
+            >
+              {user ? 'My dashboard' : 'Create account'}
+            </button>
+            <button
+              onClick={() => {
+                setError('');
+                setBasketOpen(true);
+              }}
+            >
+              Your basket
+            </button>
+          </div>
+        </div>
+        <div className="container footer-bottom">
+          © {new Date().getFullYear()} Star Mart · House of Groceries{' '}
+          <a href="/category-photos/credits.html" target="_blank" rel="noopener noreferrer">
+            Photo credits
+          </a>
+          <a href="/shop">Back to top ↑</a>
+        </div>
+      </footer>
+      {notice && (
+        <div className="toast show" role="status">
+          {notice}
+        </div>
+      )}
+      <div className="store-floating-contact">
+        <button
+          type="button"
+          className="store-community-float"
+          onClick={() => setCommunityOpen(true)}
+        >
+          <Users size={20} />
+          <span>Community</span>
+        </button>
+        {whatsappNumber(store.whatsapp || store.phone) ? (
+          <a
+            className="store-whatsapp-float"
+            href={'https://wa.me/' + whatsappNumber(store.whatsapp || store.phone)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MessageCircle size={22} />
+            <span>WhatsApp</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="store-whatsapp-float"
+            onClick={() => setCommunityOpen(true)}
+          >
+            <MessageCircle size={22} />
+            <span>WhatsApp</span>
+          </button>
+        )}
+      </div>
+      {identityReady && !user && <ShoppingWelcome />}
+      {user && preferencesReady && setupOpen && (
+        <ShoppingSetup
+          initial={preference || { fulfillment, phone, address }}
+          store={store}
+          onSave={savePreference}
+          onClose={preference ? () => setSetupOpen(false) : undefined}
+        />
+      )}{' '}
+      {communityOpen && <StoreCommunity store={store} onClose={() => setCommunityOpen(false)} />}
+      {vendorOpen && (
+        <div
+          className="market-overlay"
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setVendorOpen(false);
+          }}
+        >
+          <div className="market-modal">
+            <button className="modal-close" onClick={() => setVendorOpen(false)} aria-label="Close">
+              ×
+            </button>
+            <span className="kicker">SUPPLY STAR MART</span>
+            <h2>Become a vendor</h2>
+            <div className="vendor-login-link">
+              Already approved? <a href="/vendor">Vendor sign in →</a>
+            </div>
+            <p className="auth-note">
+              Send your details. The owner will review your request, activate your account. You
+              choose your own password.
+            </p>
+            <form className="auth-form" onSubmit={applyVendor}>
+              {[
+                ['business', 'Business name'],
+                ['contact', 'Contact person'],
+                ['email', 'Email'],
+                ['phone', 'Phone number'],
+                ['password', 'Create password'],
+                ['address', 'Address'],
+                ['note', 'Products you supply'],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    value={vendorForm[key] || ''}
+                    onChange={e => setVendorForm({ ...vendorForm, [key]: e.target.value })}
+                    type={
+                      key === 'password'
+                        ? 'password'
+                        : key === 'email'
+                          ? 'email'
+                          : key === 'phone'
+                            ? 'tel'
+                            : 'text'
+                    }
+                    minLength={key === 'password' ? 8 : undefined}
+                    required={['business', 'contact', 'email', 'phone', 'password'].includes(key)}
+                  />
+                </label>
+              ))}
+              {error && <div className="auth-error">{error}</div>}
+              <button className="checkout" disabled={vendorBusy}>
+                {vendorBusy ? 'Sending…' : 'Send vendor request'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {selectedProduct && (
+        <ProductDetail
+          product={selectedProduct}
+          quantity={Number(cart[selectedProduct.id] || 0)}
+          onAdd={(id, amount) => add(id, amount)}
+          onQuantity={n => adjust(selectedProduct.id, n - Number(cart[selectedProduct.id] || 0))}
+          onCart={() => {
+            setSelectedProduct(null);
+            setBasketOpen(true);
+          }}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
+      {basketOpen && (
+        <StoreCheckout
+          items={items}
+          total={total}
+          busy={busy}
+          error={error}
+          user={user}
+          name={name}
+          setName={setName}
+          phone={phone}
+          setPhone={setPhone}
+          fulfillment={fulfillment}
+          setFulfillment={setFulfillment}
+          address={address}
+          setAddress={setAddress}
+          note={note}
+          setNote={setNote}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
+          paymentReference={paymentReference}
+          setPaymentReference={setPaymentReference}
+          adjust={adjust}
+          remove={id =>
+            setCart(old => {
+              let next = { ...old };
+              delete next[id];
+              return next;
+            })
+          }
+          onClose={() => {
+            setBasketOpen(false);
+            setError('');
+          }}
+          onSubmit={() => checkout('checkout')}
+          onWhatsApp={() => checkout('whatsapp')}
+        />
+      )}
+      {placedOrder && (
+        <OrderConfirmation order={placedOrder} onClose={() => setPlacedOrder(null)} />
+      )}
+      {demoResult && (
+        <div className="market-overlay">
+          <div className="market-modal">
+            <button className="modal-close" onClick={() => setDemoResult(null)} aria-label="Close">
+              ×
+            </button>
+            <span className="kicker">CHECKOUT PREVIEW</span>
+            <h2>Demo checkout complete</h2>
+            <p>
+              Ye sirf test tha. Koi order admin ko nahi gaya, payment collect nahi hui aur stock
+              change nahi hua.
+            </p>
+            <div className="basket-total">
+              <span>Example total</span>
+              <strong>{money(demoResult.total)}</strong>
+            </div>
+            <p>
+              {demoResult.fulfillment} · {demoResult.paymentMethod}
+            </p>
+            <ul>
+              {demoResult.items.map((item, i) => (
+                <li key={i}>
+                  {item.name} × {item.quantity}
+                </li>
+              ))}
+            </ul>
+            <button className="checkout" onClick={() => setDemoResult(null)}>
+              Continue shopping
+            </button>
+          </div>
+        </div>
+      )}
+      {authOpen && (
+        <div
+          className="market-overlay"
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setAuthOpen(false);
+          }}
+        >
+          <div className="market-modal">
+            <button className="modal-close" onClick={() => setAuthOpen(false)} aria-label="Close">
+              ×
+            </button>
+            <span className="kicker">STAR MART ACCOUNT</span>
+            <h2>
+              {mode === 'signup'
+                ? 'Create your Star Mart account'
+                : mode === 'reset'
+                  ? 'Reset password'
+                  : 'Sign in to Star Mart'}
+            </h2>
+            {configured && (
+              <div className="auth-tabs">
+                <button
+                  className={method === 'email' ? 'active' : ''}
+                  onClick={() => {
+                    setMethod('email');
+                    setError('');
+                  }}
+                >
+                  Email
+                </button>
+                {configured && (
+                  <button
+                    className={method === 'phone' ? 'active' : ''}
+                    onClick={() => {
+                      setMethod('phone');
+                      setError('');
+                    }}
+                  >
+                    Mobile OTP
+                  </button>
+                )}
+              </div>
+            )}
+            {method === 'email' && configured && (
+              <button className="social-button" onClick={google} disabled={busy}>
+                Continue with Google
+              </button>
+            )}
+            <form className="auth-form" onSubmit={authSubmit}>
+              {method === 'email' ? (
+                <>
+                  {mode === 'signup' && (
+                    <>
+                      <label>
+                        Full name
+                        <input
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          autoComplete="name"
+                          required
+                        />
+                      </label>
+                      <label>
+                        Mobile number (optional)
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          placeholder="0300 1234567"
+                          autoComplete="tel"
+                        />
+                      </label>
+                    </>
+                  )}
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                    />
+                  </label>
+                  {mode !== 'reset' && (
+                    <label>
+                      Password
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        minLength={mode === 'signup' ? 8 : 1}
+                        required
+                      />
+                    </label>
+                  )}
+                </>
+              ) : (
+                <>
+                  <label>
+                    Mobile number with country code
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="+923001234567"
+                      required
+                    />
+                  </label>
+                  {confirmation && (
+                    <label>
+                      SMS verification code
+                      <input
+                        value={otp}
+                        onChange={e => setOtp(e.target.value)}
+                        inputMode="numeric"
+                        required
+                      />
+                    </label>
+                  )}
+                  <div id="recaptcha-container" />
+                </>
+              )}
+              {error && <div className="auth-error">{error}</div>}
+              <button className="checkout" disabled={busy || (method === 'phone' && !configured)}>
+                {busy
+                  ? 'Please wait…'
+                  : method === 'phone'
+                    ? confirmation
+                      ? 'Verify code'
+                      : 'Send code'
+                    : mode === 'signup'
+                      ? 'Create account'
+                      : mode === 'reset'
+                        ? 'Send reset link'
+                        : 'Sign in'}
+              </button>
+            </form>
+            {method === 'email' && (
+              <div className="auth-switch">
+                {mode === 'login' ? (
+                  <>
+                    <button onClick={() => setMode('signup')}>Create account</button>
+                    {configured && (
+                      <button onClick={() => setMode('reset')}>Forgot password?</button>
+                    )}
+                  </>
+                ) : (
+                  <button onClick={() => setMode('login')}>Back to sign in</button>
+                )}
+              </div>
+            )}
+            <p className="auth-note">
+              Customer orders use your own account. Vendor?{' '}
+              <a href="/vendor">Sign in to vendor panel</a>.
+            </p>
+          </div>
+        </div>
+      )}
+      {ordersOpen && (
+        <div
+          className="market-overlay"
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setOrdersOpen(false);
+          }}
+        >
+          <div className="market-modal">
+            <button className="modal-close" onClick={() => setOrdersOpen(false)} aria-label="Close">
+              ×
+            </button>
+            <span className="kicker">YOUR ACCOUNT</span>
+            <h2>My orders</h2>
+            {orders.length ? (
+              orders.map(o => (
+                <div className="order-card" key={o.id}>
+                  <strong>
+                    {o.id} · {money(o.total_paisa)}
+                  </strong>
+                  <small>
+                    {o.status} · {o.payment_method} · {o.payment_status} · {o.fulfillment} ·{' '}
+                    {new Date(o.created_at).toLocaleString('en-PK')}
+                  </small>
+                  <small>{o.items.map(i => i.name + ' × ' + qty(i.qty_milli)).join(', ')}</small>
+                </div>
+              ))
+            ) : (
+              <div className="empty-products">No orders yet.</div>
+            )}
+            <button
+              className="social-button"
+              onClick={async () => {
+                if (user?.local)
+                  await fetch('/api/customer/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                  });
+                else if (auth) await signOut(auth);
+                setUser(null);
+                setOrdersOpen(false);
+                message('Signed out.');
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-
-function ProductDetail({product,quantity,onAdd,onQuantity,onCart,onClose}){
-const [draft,setDraft]=useState('1'),[error,setError]=useState('');const close=useRef(null);const available=product.sample?10:Math.max(0,Math.floor(Number(product.stock_milli||0)/1000));
-useEffect(()=>{const previous=document.activeElement;close.current?.focus();const handler=e=>{if(e.key==='Escape')onClose();if(e.key==='Tab'){const nodes=close.current?.closest('[role="dialog"]')?.querySelectorAll('button:not(:disabled),input:not(:disabled)');const first=nodes?.[0],last=nodes?.[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener('keydown',handler);return()=>{document.removeEventListener('keydown',handler);previous?.focus()}},[]);
-function submit(){const n=Number(draft);if(!Number.isInteger(n)||n<1||n+quantity>available){setError('Choose a whole quantity within available stock.');return}if(onAdd(product.id,n)){setDraft('1');setError('')}}
-return <div className="pd-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="pd-dialog" role="dialog" aria-modal="true" aria-labelledby="pd-title"><button ref={close} className="pd-close" aria-label="Close product" onClick={onClose}>×</button><div className="pd-image">{product.image?<img src={product.image} alt={product.name}/>:<ShoppingBag size={64}/>}</div><div className="pd-content"><span className="pd-category">{product.category} · {product.brand||'Star Mart'}</span><h2 id="pd-title">{product.name}</h2><p>{product.pack_size||product.unit}</p><strong className="pd-price">{money(product.price_paisa)}</strong><span className={'pd-stock '+(!available?'empty':'')}>{available?available+' available':'Out of stock'}</span>{quantity>0&&<p className="pd-added" role="status">✓ {quantity} in your cart</p>}<label className="pd-quantity">Quantity to add<div><button disabled={Number(draft)<=1} onClick={()=>setDraft(String(Math.max(1,Number(draft||1)-1)))} aria-label="Reduce quantity">−</button><input type="number" min="1" max={Math.max(1,available-quantity)} step="1" value={draft} onChange={e=>{setDraft(e.target.value);setError('')}} aria-label="Quantity to add"/><button disabled={Number(draft)>=available-quantity} onClick={()=>setDraft(String(Number(draft||0)+1))} aria-label="Increase quantity">+</button></div>{error&&<small role="alert">{error}</small>}</label><button className="pd-add" disabled={!available||quantity>=available} onClick={submit}>{!available?'Out of stock':quantity>=available?'All stock added':'Add to cart'}</button><button className="pd-view" onClick={onCart}>View cart & checkout →</button></div></section></div>}
+function ProductDetail({ product, quantity, onAdd, onQuantity, onCart, onClose }) {
+  const [draft, setDraft] = useState('1'),
+    [error, setError] = useState('');
+  const close = useRef(null);
+  const available = product.sample
+    ? 10
+    : Math.max(0, Math.floor(Number(product.stock_milli || 0) / 1000));
+  useEffect(() => {
+    const previous = document.activeElement;
+    close.current?.focus();
+    const handler = e => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Tab') {
+        const nodes = close.current
+          ?.closest('[role="dialog"]')
+          ?.querySelectorAll('button:not(:disabled),input:not(:disabled)');
+        const first = nodes?.[0],
+          last = nodes?.[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => {
+      document.removeEventListener('keydown', handler);
+      previous?.focus();
+    };
+  }, []);
+  function submit() {
+    const n = Number(draft);
+    if (!Number.isInteger(n) || n < 1 || n + quantity > available) {
+      setError('Choose a whole quantity within available stock.');
+      return;
+    }
+    if (onAdd(product.id, n)) {
+      setDraft('1');
+      setError('');
+    }
+  }
+  return (
+    <div
+      className="pd-overlay"
+      onMouseDown={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section className="pd-dialog" role="dialog" aria-modal="true" aria-labelledby="pd-title">
+        <button ref={close} className="pd-close" aria-label="Close product" onClick={onClose}>
+          ×
+        </button>
+        <div className="pd-image">
+          {product.image ? (
+            <img src={product.image} alt={product.name} />
+          ) : (
+            <ShoppingBag size={64} />
+          )}
+        </div>
+        <div className="pd-content">
+          <span className="pd-category">
+            {product.category} · {product.brand || 'Star Mart'}
+          </span>
+          <h2 id="pd-title">{product.name}</h2>
+          <p>{product.pack_size || product.unit}</p>
+          <strong className="pd-price">{money(product.price_paisa)}</strong>
+          <span className={'pd-stock ' + (!available ? 'empty' : '')}>
+            {available ? available + ' available' : 'Out of stock'}
+          </span>
+          {quantity > 0 && (
+            <p className="pd-added" role="status">
+              ✓ {quantity} in your cart
+            </p>
+          )}
+          <label className="pd-quantity">
+            Quantity to add
+            <div>
+              <button
+                disabled={Number(draft) <= 1}
+                onClick={() => setDraft(String(Math.max(1, Number(draft || 1) - 1)))}
+                aria-label="Reduce quantity"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min="1"
+                max={Math.max(1, available - quantity)}
+                step="1"
+                value={draft}
+                onChange={e => {
+                  setDraft(e.target.value);
+                  setError('');
+                }}
+                aria-label="Quantity to add"
+              />
+              <button
+                disabled={Number(draft) >= available - quantity}
+                onClick={() => setDraft(String(Number(draft || 0) + 1))}
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+            {error && <small role="alert">{error}</small>}
+          </label>
+          <button
+            className="pd-add"
+            disabled={!available || quantity >= available}
+            onClick={submit}
+          >
+            {!available
+              ? 'Out of stock'
+              : quantity >= available
+                ? 'All stock added'
+                : 'Add to cart'}
+          </button>
+          <button className="pd-view" onClick={onCart}>
+            View cart & checkout →
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

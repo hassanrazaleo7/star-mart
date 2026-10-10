@@ -1,7 +1,44 @@
-export function fixed(value,scale,label,{min=0,zero=true}={}){let s=String(value??'').trim();if(!/^\d+(?:\.\d+)?$/.test(s))throw Error(label+' must be a valid number');let [whole,decimal='']=s.split('.'),digits=String(scale).length-1;if(decimal.length>digits)throw Error(label+' supports at most '+digits+' decimal places');let n=Number(whole)*scale+Number(decimal.padEnd(digits,'0'));if(!Number.isSafeInteger(n)||n>1_000_000_000_000||n<min||(!zero&&n===0))throw Error(label+' is outside the allowed range');return n}
-export const paisa=(v,label='Amount')=>fixed(v,100,label);
-export const milli=(v,label='Quantity')=>fixed(v,1000,label);
-export function allocate(total,weights){if(!Number.isSafeInteger(total)||total<0||weights.some(x=>!Number.isSafeInteger(x)||x<0))throw Error('Allocation must use nonnegative safe integers');let sum=weights.reduce((a,b)=>a+BigInt(b),0n);if(!sum)return weights.map(()=>0);let out=weights.map(w=>Number(BigInt(total)*BigInt(w)/sum));let remaining=total-out.reduce((a,b)=>a+b,0);let order=weights.map((w,i)=>({i,r:BigInt(total)*BigInt(w)%sum})).sort((a,b)=>a.r>b.r?-1:a.r<b.r?1:a.i-b.i);for(let i=0;i<remaining;i++)out[order[i].i]++;return out}
-export function lineAmount(qtyMilli,unitPaisa){let amount=(BigInt(qtyMilli)*BigInt(unitPaisa)+500n)/1000n;if(amount>BigInt(Number.MAX_SAFE_INTEGER))throw Error('Line amount is too large');return Number(amount)}
-
-export function wholeQuantity(v,label='Quantity'){let n=Number(v);if(!Number.isSafeInteger(n)||n<0||String(v??'').trim()==='')throw Object.assign(new Error(label+' must be a whole number (0, 1, 2, 3…)'),{status:400});return fixed(n,1000,label)}
+import { fail } from './errors.mjs';
+// Money is integer paisa (scale 100); quantities are integer thousandths (scale 1000).
+export function fixed(value, scale, label, { min = 0, zero = true } = {}) {
+  let s = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d+)?$/.test(s)) throw fail(label + ' must be a valid number');
+  let [whole, decimal = ''] = s.split('.'),
+    digits = String(scale).length - 1;
+  if (decimal.length > digits) throw fail(label + ' supports at most ' + digits + ' decimal places');
+  let n = Number(whole) * scale + Number(decimal.padEnd(digits, '0'));
+  if (!Number.isSafeInteger(n) || n > 1_000_000_000_000 || n < min || (!zero && n === 0))
+    throw fail(label + ' is outside the allowed range');
+  return n;
+}
+export const paisa = (v, label = 'Amount') => fixed(v, 100, label);
+export const milli = (v, label = 'Quantity') => fixed(v, 1000, label);
+// Largest-remainder allocation of an integer total across weights; the parts always sum to the total.
+export function allocate(total, weights) {
+  if (
+    !Number.isSafeInteger(total) ||
+    total < 0 ||
+    weights.some(x => !Number.isSafeInteger(x) || x < 0)
+  )
+    throw fail('Allocation must use nonnegative safe integers', 500);
+  let sum = weights.reduce((a, b) => a + BigInt(b), 0n);
+  if (!sum) return weights.map(() => 0);
+  let out = weights.map(w => Number((BigInt(total) * BigInt(w)) / sum));
+  let remaining = total - out.reduce((a, b) => a + b, 0);
+  let order = weights
+    .map((w, i) => ({ i, r: (BigInt(total) * BigInt(w)) % sum }))
+    .sort((a, b) => (a.r > b.r ? -1 : a.r < b.r ? 1 : a.i - b.i));
+  for (let i = 0; i < remaining; i++) out[order[i].i]++;
+  return out;
+}
+export function lineAmount(qtyMilli, unitPaisa) {
+  let amount = (BigInt(qtyMilli) * BigInt(unitPaisa) + 500n) / 1000n;
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) throw fail('Line amount is too large');
+  return Number(amount);
+}
+export function wholeQuantity(v, label = 'Quantity') {
+  let n = Number(v);
+  if (!Number.isSafeInteger(n) || n < 0 || String(v ?? '').trim() === '')
+    throw fail(label + ' must be a whole number (0, 1, 2, 3…)');
+  return fixed(n, 1000, label);
+}

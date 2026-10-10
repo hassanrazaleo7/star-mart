@@ -1,6 +1,72 @@
-import React,{useEffect,useState} from 'react';
-import {Search,ArrowUpRight} from 'lucide-react';
-import {Button} from '@/components/ui/button';
-import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {Input} from '@/components/ui/input';
-export default function AdminCommand({nav,onNavigate}){const[open,setOpen]=useState(false),[query,setQuery]=useState('');useEffect(()=>{const listener=e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setOpen(x=>!x)}};document.addEventListener('keydown',listener);return()=>document.removeEventListener('keydown',listener)},[]);return <><Button variant="outline" className="sm-command-button" onClick={()=>{setQuery('');setOpen(true)}}><Search size={15}/><span>Jump to…</span><kbd>Ctrl K</kbd></Button><Dialog open={open} onOpenChange={setOpen}><DialogContent className="sm-search-dialog"><DialogHeader><DialogTitle>Where would you like to go?</DialogTitle><DialogDescription>Find your counter, stock, customers or reports.</DialogDescription></DialogHeader><Input placeholder="Search workspace…" value={query} onChange={e=>setQuery(e.target.value)}/><div className="sm-command-list">{nav.filter(([,label])=>label.toLowerCase().includes(query.toLowerCase())).map(([key,label,Icon])=><Button variant="ghost" key={key} onClick={()=>{onNavigate(key);setOpen(false)}}><Icon size={17}/>{label}<ArrowUpRight size={15}/></Button>)}</div></DialogContent></Dialog></>}
+import React, { useEffect, useState } from 'react';
+import { Search, ArrowUpRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+export default function AdminCommand({ nav, onNavigate }) {
+  const [open, setOpen] = useState(false),
+    [query, setQuery] = useState('');
+  useEffect(() => {
+    const listener = e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpen(x => !x);
+      }
+    };
+    document.addEventListener('keydown', listener);
+    return () => document.removeEventListener('keydown', listener);
+  }, []);
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="sm-command-button"
+        onClick={() => {
+          setQuery('');
+          setOpen(true);
+        }}
+      >
+        <Search size={15} />
+        <span>Jump to…</span>
+        <kbd>Ctrl K</kbd>
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm-search-dialog">
+          <DialogHeader>
+            <DialogTitle>Where would you like to go?</DialogTitle>
+            <DialogDescription>Find your counter, stock, customers or reports.</DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Search workspace…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          <div className="sm-command-list">
+            {nav
+              .filter(([, label]) => label.toLowerCase().includes(query.toLowerCase()))
+              .map(([key, label, Icon]) => (
+                <Button
+                  variant="ghost"
+                  key={key}
+                  onClick={() => {
+                    onNavigate(key);
+                    setOpen(false);
+                  }}
+                >
+                  <Icon size={17} />
+                  {label}
+                  <ArrowUpRight size={15} />
+                </Button>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

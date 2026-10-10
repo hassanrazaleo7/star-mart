@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.data/
+public/
+package-lock.json
+CODE_AUDIT.md

@@ -1,1 +1,68 @@
-.bulk-panel{max-width:1000px}.bulk-panel .card-title{flex-wrap:wrap;gap:16px}.bulk-panel p{color:#656565;font-size:13px;line-height:1.65}.bulk-download{display:inline-flex;align-items:center;gap:7px;color:#006a54;font-weight:800;font-size:13px}.bulk-picker{display:flex;align-items:center;gap:13px;border:2px dashed #00745c;border-radius:14px;padding:25px;margin:21px 0 14px;background:#f8fcf9;color:#006752;cursor:pointer;font-weight:800}.bulk-picker input{display:none}.bulk-panel .primary{min-height:44px}.bulk-panel .bulk-progress{font-weight:800;color:#00745c}.bulk-panel .bulk-error{display:flex;gap:7px;align-items:flex-start;color:#fc2600;background:#fff5f4;padding:12px;border-radius:9px}.bulk-summary{display:flex;gap:10px;background:#eaf4f2;color:#00725a;border-radius:10px;padding:13px;margin:15px 0;font-size:13px;font-weight:700}.bulk-panel small{display:block;color:#7c7c7c;margin-top:18px}
+.bulk-panel {
+  max-width: 1000px;
+}
+.bulk-panel .card-title {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.bulk-panel p {
+  color: #656565;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.bulk-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #006a54;
+  font-weight: 800;
+  font-size: 13px;
+}
+.bulk-picker {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 2px dashed #00745c;
+  border-radius: 14px;
+  padding: 25px;
+  margin: 21px 0 14px;
+  background: #f8fcf9;
+  color: #006752;
+  cursor: pointer;
+  font-weight: 800;
+}
+.bulk-picker input {
+  display: none;
+}
+.bulk-panel .primary {
+  min-height: 44px;
+}
+.bulk-panel .bulk-progress {
+  font-weight: 800;
+  color: #00745c;
+}
+.bulk-panel .bulk-error {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  color: #fc2600;
+  background: #fff5f4;
+  padding: 12px;
+  border-radius: 9px;
+}
+.bulk-summary {
+  display: flex;
+  gap: 10px;
+  background: #eaf4f2;
+  color: #00725a;
+  border-radius: 10px;
+  padding: 13px;
+  margin: 15px 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.bulk-panel small {
+  display: block;
+  color: #7c7c7c;
+  margin-top: 18px;
+}

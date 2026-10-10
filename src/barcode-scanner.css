@@ -1,1 +1,133 @@
-.sm-barcode-overlay{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:#102a20b8;padding:16px}.sm-barcode-panel{background:#fff;color:#181818;width:min(560px,100%);max-height:calc(100dvh - 32px);overflow:auto;border-radius:18px;padding:20px;box-sizing:border-box;box-shadow:0 20px 80px #0004}.sm-barcode-panel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.sm-barcode-panel header strong{font-size:19px;color:#00745c}.sm-barcode-panel header small{display:block;font-size:12px;margin-top:5px}.sm-barcode-panel button,.sm-product-barcode button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border:1px solid #d8e5dc;background:#fff;color:#00745c;border-radius:9px;cursor:pointer;font:inherit}.sm-barcode-panel button:hover,.sm-product-barcode button:hover{border-color:#00745c;background:#eef7f2}.sm-barcode-preview{position:relative;background:#102a20;border-radius:12px;overflow:hidden;aspect-ratio:4/3}.sm-barcode-preview video{display:block;width:100%;height:100%;object-fit:cover}.sm-barcode-guide{position:absolute;left:10%;right:10%;top:30%;bottom:30%;border:2px solid #fff;border-radius:8px;pointer-events:none}.sm-barcode-panel p{font-size:14px;overflow-wrap:anywhere}.sm-barcode-panel footer{display:flex;flex-wrap:wrap;gap:10px}.sm-barcode-error{color:#c72000}.sm-barcode-note{display:block;margin-top:14px;font-size:12px;line-height:1.5}.sm-product-barcode{padding:16px;border:1px solid #dce8e1;border-radius:12px;margin:14px 0;background:#f8fbf9}.sm-product-barcode label{display:grid;gap:8px;font-size:14px;font-weight:650}.sm-product-barcode input{padding:12px;border:1px solid #d8e5dc;border-radius:8px;width:100%;box-sizing:border-box;font:inherit;color:#181818;background:#fff}.sm-product-barcode button{margin-top:10px}.sm-product-barcode small{display:block;margin-top:9px;font-size:12px;line-height:1.5}.sm-barcode-panel button:focus-visible,.sm-product-barcode button:focus-visible{outline:3px solid #fc2600;outline-offset:2px}
+.sm-barcode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #102a20b8;
+  padding: 16px;
+}
+.sm-barcode-panel {
+  background: #fff;
+  color: #181818;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  border-radius: 18px;
+  padding: 20px;
+  box-sizing: border-box;
+  box-shadow: 0 20px 80px #0004;
+}
+.sm-barcode-panel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.sm-barcode-panel header strong {
+  font-size: 19px;
+  color: #00745c;
+}
+.sm-barcode-panel header small {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+}
+.sm-barcode-panel button,
+.sm-product-barcode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #d8e5dc;
+  background: #fff;
+  color: #00745c;
+  border-radius: 9px;
+  cursor: pointer;
+  font: inherit;
+}
+.sm-barcode-panel button:hover,
+.sm-product-barcode button:hover {
+  border-color: #00745c;
+  background: #eef7f2;
+}
+.sm-barcode-preview {
+  position: relative;
+  background: #102a20;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+}
+.sm-barcode-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sm-barcode-guide {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 30%;
+  bottom: 30%;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  pointer-events: none;
+}
+.sm-barcode-panel p {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.sm-barcode-panel footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sm-barcode-error {
+  color: #c72000;
+}
+.sm-barcode-note {
+  display: block;
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sm-product-barcode {
+  padding: 16px;
+  border: 1px solid #dce8e1;
+  border-radius: 12px;
+  margin: 14px 0;
+  background: #f8fbf9;
+}
+.sm-product-barcode label {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.sm-product-barcode input {
+  padding: 12px;
+  border: 1px solid #d8e5dc;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: #181818;
+  background: #fff;
+}
+.sm-product-barcode button {
+  margin-top: 10px;
+}
+.sm-product-barcode small {
+  display: block;
+  margin-top: 9px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sm-barcode-panel button:focus-visible,
+.sm-product-barcode button:focus-visible {
+  outline: 3px solid #fc2600;
+  outline-offset: 2px;
+}

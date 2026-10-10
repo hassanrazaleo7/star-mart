@@ -1,3 +1,30 @@
-import {tx} from './db.mjs';
-export async function cleanupSamples(remove=false){return tx(async c=>{let candidates=(await c.query(`SELECT p.id,p.name,p.sku,p.vendor_id,p.brand,
-EXISTS(SELECT 1 FROM stock_movements WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM purchases WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM sales WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM customer_order_items WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM adjustments WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM vendor_returns WHERE product_id=p.id) AS has_history FROM products p WHERE p.sku ~ '^SM-DEMO-[0-9]{2}-[0-9]{2}$' ORDER BY p.sku FOR UPDATE OF p`)).rows,eligible=[],skipped=[];for(let p of candidates){if(p.has_history||p.vendor_id||p.brand!=='Star Mart sample'){skipped.push({sku:p.sku,name:p.name,reason:p.has_history?'Transaction or stock history exists':'Vendor-linked or edited brand'});continue}eligible.push(p)}if(remove&&eligible.length)await c.query('DELETE FROM products WHERE id=ANY($1::text[])',[eligible.map(p=>p.id)]);return {matched:candidates.length,eligible:eligible.length,deleted:remove?eligible.length:0,skipped}})}
+import { tx } from './db.mjs';
+const CANDIDATES = `SELECT p.id,p.name,p.sku,p.vendor_id,p.brand,
+EXISTS(SELECT 1 FROM stock_movements WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM purchases WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM sales WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM customer_order_items WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM adjustments WHERE product_id=p.id) OR EXISTS(SELECT 1 FROM vendor_returns WHERE product_id=p.id) AS has_history FROM products p WHERE p.sku ~ '^SM-DEMO-[0-9]{2}-[0-9]{2}$' ORDER BY p.sku`;
+// The preview (remove=false) reads without locks; only the actual removal locks the rows.
+export async function cleanupSamples(remove = false) {
+  return tx(async c => {
+    const candidates = (await c.query(remove ? CANDIDATES + ' FOR UPDATE OF p' : CANDIDATES)).rows,
+      eligible = [],
+      skipped = [];
+    for (const p of candidates) {
+      if (p.has_history || p.vendor_id || p.brand !== 'Star Mart sample') {
+        skipped.push({
+          sku: p.sku,
+          name: p.name,
+          reason: p.has_history ? 'Transaction or stock history exists' : 'Vendor-linked or edited brand',
+        });
+        continue;
+      }
+      eligible.push(p);
+    }
+    if (remove && eligible.length)
+      await c.query('DELETE FROM products WHERE id=ANY($1::text[])', [eligible.map(p => p.id)]);
+    return {
+      matched: candidates.length,
+      eligible: eligible.length,
+      deleted: remove ? eligible.length : 0,
+      skipped,
+    };
+  });
+}

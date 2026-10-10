@@ -1,6 +1,86 @@
-import React,{useEffect,useRef,useState} from 'react';
-import {ShoppingBag,ChevronLeft,ChevronRight,ArrowUpRight} from 'lucide-react';
-import {SHOP_DEPARTMENTS,departmentValue,matchesDepartment} from './shop-departments.mjs';
+import React, { useEffect, useRef, useState } from 'react';
+import { ShoppingBag, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { SHOP_DEPARTMENTS, departmentValue, matchesDepartment } from './shop-departments.mjs';
 import './category-directory.css';
-export function CategoryIcon(){return <ShoppingBag className="category-symbol" aria-hidden="true"/>}
-export default function CategoryDirectory({selected,onSelect}){const row=useRef(null),[edges,setEdges]=useState({start:true,end:false});function update(){const e=row.current;if(e)setEdges({start:e.scrollLeft<2,end:e.scrollLeft+e.clientWidth>=e.scrollWidth-2})}useEffect(()=>{update();const observer=new ResizeObserver(update);if(row.current)observer.observe(row.current);return()=>observer.disconnect()},[]);function move(direction){row.current?.scrollBy({left:direction*Math.max(160,row.current.clientWidth*.8),behavior:'smooth'})}return <section className="section category-section simple-category-section" id="categories"><div className="container"><div className="section-heading"><div><span className="kicker">EXPLORE STAR MART</span><h2>Shop by category</h2></div><div className="category-row-controls"><a className="text-link" href="#products">View all products <ArrowUpRight size={18}/></a><button disabled={edges.start} onClick={()=>move(-1)} aria-label="Previous categories"><ChevronLeft size={21}/></button><button disabled={edges.end} onClick={()=>move(1)} aria-label="Next categories"><ChevronRight size={21}/></button></div></div><div className="simple-category-row" ref={row} onScroll={update} aria-label="Grocery categories">{SHOP_DEPARTMENTS.map(d=>{const value=departmentValue(d.id);return <button key={d.id} className={'simple-category-card '+(selected===value?'selected':'')} aria-pressed={selected===value} onClick={()=>onSelect(value)}><span className="simple-category-art"><img src={'/category-photos/'+d.id+'.jpg'} alt="" loading="lazy" onError={e=>{e.currentTarget.src='/grocery-hero.png';e.currentTarget.onerror=null}}/></span><strong>{d.name}</strong></button>})}</div></div></section>}
+export function CategoryIcon() {
+  return <ShoppingBag className="category-symbol" aria-hidden="true" />;
+}
+export default function CategoryDirectory({ selected, onSelect }) {
+  const row = useRef(null),
+    [edges, setEdges] = useState({ start: true, end: false });
+  function update() {
+    const e = row.current;
+    if (e)
+      setEdges({ start: e.scrollLeft < 2, end: e.scrollLeft + e.clientWidth >= e.scrollWidth - 2 });
+  }
+  useEffect(() => {
+    update();
+    const observer = new ResizeObserver(update);
+    if (row.current) observer.observe(row.current);
+    return () => observer.disconnect();
+  }, []);
+  function move(direction) {
+    row.current?.scrollBy({
+      left: direction * Math.max(160, row.current.clientWidth * 0.8),
+      behavior: 'smooth',
+    });
+  }
+  return (
+    <section className="section category-section simple-category-section" id="categories">
+      <div className="container">
+        <div className="section-heading">
+          <div>
+            <span className="kicker">EXPLORE STAR MART</span>
+            <h2>Shop by category</h2>
+          </div>
+          <div className="category-row-controls">
+            <a className="text-link" href="#products">
+              View all products <ArrowUpRight size={18} />
+            </a>
+            <button
+              disabled={edges.start}
+              onClick={() => move(-1)}
+              aria-label="Previous categories"
+            >
+              <ChevronLeft size={21} />
+            </button>
+            <button disabled={edges.end} onClick={() => move(1)} aria-label="Next categories">
+              <ChevronRight size={21} />
+            </button>
+          </div>
+        </div>
+        <div
+          className="simple-category-row"
+          ref={row}
+          onScroll={update}
+          aria-label="Grocery categories"
+        >
+          {SHOP_DEPARTMENTS.map(d => {
+            const value = departmentValue(d.id);
+            return (
+              <button
+                key={d.id}
+                className={'simple-category-card ' + (selected === value ? 'selected' : '')}
+                aria-pressed={selected === value}
+                onClick={() => onSelect(value)}
+              >
+                <span className="simple-category-art">
+                  <img
+                    src={'/category-photos/' + d.id + '.jpg'}
+                    alt=""
+                    loading="lazy"
+                    onError={e => {
+                      e.currentTarget.src = '/grocery-hero.png';
+                      e.currentTarget.onerror = null;
+                    }}
+                  />
+                </span>
+                <strong>{d.name}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}

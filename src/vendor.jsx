@@ -1,44 +1,892 @@
-import {BarcodeCamera,ProductBarcode} from './barcode-scanner.jsx';
-import {GROCERY_CATEGORIES} from './grocery-categories.mjs';
-import {PasswordChange} from './account-security.jsx';
-import React,{useEffect,useState,useRef} from 'react';
-import {Boxes,ShoppingBag,Truck,Wallet,ClipboardList,LogOut,Plus,Upload,RefreshCw,Search,ScanBarcode,Download,ArrowUpRight,AlertTriangle,ImagePlus,X,Camera} from 'lucide-react';
+import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
+import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
+import { PasswordChange } from './account-security.jsx';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  Boxes,
+  ShoppingBag,
+  Truck,
+  Wallet,
+  ClipboardList,
+  LogOut,
+  Plus,
+  Upload,
+  RefreshCw,
+  Search,
+  ScanBarcode,
+  Download,
+  ArrowUpRight,
+  AlertTriangle,
+  ImagePlus,
+  X,
+  Camera,
+} from 'lucide-react';
 import './vendor.css';
-import {useLiveRefresh} from './live.js';
-const money=n=>'Rs '+(Number(n||0)/100).toLocaleString('en-PK',{maximumFractionDigits:2});
-const qty=n=>Math.round(Number(n||0)/1000).toLocaleString('en-PK',{maximumFractionDigits:0});
-const when=v=>new Date(v).toLocaleString('en-PK',{dateStyle:'medium',timeStyle:'short'});
-const cats=GROCERY_CATEGORIES;
-async function request(path,method='GET',payload){let r=await fetch('/api'+path,{method,credentials:'same-origin',headers:payload?{'content-type':'application/json'}:{},body:payload?JSON.stringify(payload):undefined}),j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
-const empty={name:'',sku:'',barcode:'',brand:'',category:'Frozen & Instant Foods',packSize:'',unit:'piece',price:'',cost:'',reorder:5,reorderQty:10,description:''};
-const nav=[['overview','Overview',Boxes],['products','Product catalog',Boxes],['sales','Customer sales',ShoppingBag],['purchases','Stock received',Truck],['statement','Supplier statement',Wallet],['demand','Order demand',ShoppingBag],['movements','Stock history',ClipboardList]];
-function csvDownload(rows,name){let keys=Object.keys(rows[0]||{});if(!keys.length)return;let quote=x=>'"'+String(x??'').replaceAll('"','""')+'"';let content=[keys,...rows.map(r=>keys.map(k=>r[k]))].map(r=>r.map(quote).join(',')).join('\r\n');let url=URL.createObjectURL(new Blob(['\uFEFF'+content],{type:'text/csv;charset=utf-8'}));let a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function Table({heads,children}){return <div className="vp-table-wrap"><table><thead><tr>{heads.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>}
-export default function VendorPanel({onLogout}){
- const [data,setData]=useState(null),[view,setView]=useState('overview'),[form,setForm]=useState(null),[photo,setPhoto]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[search,setSearch]=useState(''),[category,setCategory]=useState('All'),[paymentFilter,setPaymentFilter]=useState('All'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[selected,setSelected]=useState([]),[scan,setScan]=useState(''),[camera,setCamera]=useState(false);let barcode=useRef(),video=useRef(),stream=useRef(),timer=useRef();
- async function load(){try{setData(await request('/vendor/overview'))}catch(e){setError(e.message)}}useEffect(()=>{load()},[]);useEffect(()=>setSelected([]),[search,category]);useLiveRefresh(load);useEffect(()=>()=>stopCamera(),[]);
- const products=(data?.products||[]).filter(p=>!p.deleted_at),purchases=data?.purchases||[],sales=data?.sales||[],movements=data?.movements||[],ledger=data?.ledger||{entries:[],returns:[],summary:{}},summary=ledger.summary,product=id=>products.find(p=>p.id===id),low=products.filter(p=>Number(p.stock_milli)<=Number(p.reorder_milli));
- const match=x=>(!from||new Date(x.created_at||x.date)>=new Date(from+'T00:00:00'))&&(!to||new Date(x.created_at||x.date)<=new Date(to+'T23:59:59.999'));
- const catalog=products.filter(p=>(category==='All'||p.category===category)&&(p.name+' '+p.sku+' '+p.barcode+' '+p.brand).toLowerCase().includes(search.toLowerCase()));
- const shownSales=sales.filter(s=>match(s)&&(paymentFilter==='All'||s.payment===paymentFilter));
- function edit(p){stopCamera();setPhoto(null);setError('');setForm(p?{...p,packSize:p.pack_size,vendorAvailable:Number(p.vendor_available_milli||0)/1000,cost:Number(p.cost_paisa)/100,price:Number(p.price_paisa)/100,reorder:Number(p.reorder_milli)/1000,reorderQty:Number(p.reorder_qty_milli)/1000}:{...empty})}
- async function uploadImage(pid,file){let bmp=await createImageBitmap(file),scale=Math.min(1,900/Math.max(bmp.width,bmp.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bmp.width*scale));canvas.height=Math.max(1,Math.round(bmp.height*scale));canvas.getContext('2d').drawImage(bmp,0,0,canvas.width,canvas.height);bmp.close();let blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',.82));if(!blob)throw Error('Could not process picture');let r=await fetch('/api/products/'+pid+'/image',{method:'POST',credentials:'same-origin',body:blob}),j=await r.json();if(!r.ok)throw Error(j.error||'Image upload failed')}
- async function save(e){e.preventDefault();setBusy(true);setError('');let saved;try{let payload={...form};if(!form.id&&!payload.sku)payload.sku='SM-'+crypto.randomUUID().replaceAll('-','').slice(0,16).toUpperCase();delete payload.id;saved=await request(form.id?'/products/'+form.id:'/products',form.id?'PUT':'POST',payload);if(photo)await uploadImage(saved.id,photo);setForm(null);setPhoto(null);stopCamera();await load();setNotice('Product saved to your catalog. Owner records actual received stock before customer orders.')}catch(e){if(saved){setForm({...form,id:saved.id});await load();setError('Product saved, but image failed: '+e.message+'. Retry to upload it.')}else setError(e.message)}finally{setBusy(false)}}
- function scanCatalog(value=scan){let code=value.trim(),p=products.find(p=>p.barcode===code||p.sku===code);if(!code)return;if(p){setView('products');setSearch(code);setNotice(p.name+' · '+qty(p.stock_milli)+' '+p.unit+' remaining')}else{edit();setForm({...empty,barcode:code});setNotice('New barcode: complete the product details.')}setScan('')}
- function stopCamera(){setCamera(false)}
- const title=nav.find(n=>n[0]===view)?.[1];
- return <div className="vp"><aside className="vp-side"><a className="vp-logo" href="/shop"><img src="/logo.png" alt="Star Mart"/></a><div className="vp-label">SUPPLIER WORKSPACE</div><nav>{nav.map(([key,label,Icon])=><button key={key} className={view===key?'active':''} onClick={()=>{setView(key);setError('')}}><Icon size={18}/>{label}{key==='products'&&<em>{products.length}</em>}</button>)}</nav><div className="vp-bottom"><div className="vp-avatar">{data?.vendor?.name?.slice(0,1)||'V'}</div><strong>{data?.vendor?.name||'Vendor account'}</strong><span>{data?.vendor?.email}</span><button onClick={onLogout}><LogOut size={17}/> Sign out</button></div></aside>
- <main className="vp-main"><header><div><small>STAR MART / VENDOR OPERATIONS</small><h1>{title}</h1><p className="vp-subtitle">Your catalog, stock and supplier account in clear view.</p></div><div className="vp-buttons"><button className="vp-outline" disabled={busy} onClick={load}><RefreshCw size={16}/> Refresh</button><button className="vp-primary" onClick={()=>edit()}><Plus size={17}/> Add product</button></div></header>{error&&<p className="vp-error" role="alert">{error}</p>}{notice&&<p className="vp-note" role="status">{notice}<button onClick={()=>setNotice('')}>×</button></p>}
- <PasswordChange kind="vendor"/>{!data?<p>Loading supplier account…</p>:<>
- {view==='overview'&&<><section className="vp-hero"><div><span>YOUR PARTNERSHIP WITH STAR MART</span><h2>Every delivery.<br/>Every rupee accounted for.</h2><p>Stock supplied, customer sales and payments to you are tracked separately.</p><button onClick={()=>setView('statement')}>View supplier statement <ArrowUpRight size={17}/></button></div><img src="/vendor-grocery.png" alt="Grocery shelves"/></section><div className="vp-metrics">{[['Catalog items',products.length],['Stock available',qty(products.reduce((n,p)=>n+Number(p.stock_milli),0))],['Units sold',qty(sales.reduce((n,p)=>n+Number(p.qty_milli),0))],[Number(summary.balance)<0?'Vendor credit held':'Store owes you',money(Math.abs(summary.balance||0))]].map(([k,v])=><article key={k}><small>{k}</small><strong>{v}</strong></article>)}</div><div className="vp-grid"><section className="vp-card"><div className="vp-head"><h2>Low stock watch</h2><AlertTriangle size={20}/></div>{low.slice(0,6).map(p=><div className="vp-line" key={p.id}><span>{p.name}<small>Reorder at {qty(p.reorder_milli)} {p.unit}</small></span><b className="vp-alert">{qty(p.stock_milli)} left</b></div>)}{!low.length&&<p>All products are above their reorder levels.</p>}</section><section className="vp-card"><h2>Latest supplier entries</h2>{ledger.entries.slice(-6).reverse().map(x=><div className="vp-line" key={x.id}><span>{x.type}<small>{when(x.date)} · {x.reference}</small></span><b>{money(x.debit||x.credit)}</b></div>)}{!ledger.entries.length&&<p>Your first stock receipt will start this statement.</p>}</section></div></>}
- {view==='products'&&<section className="vp-card"><div className="vp-head"><div><h2>Your product catalog</h2><p>Every product is automatically linked to your vendor account.</p></div><button className="vp-outline" onClick={()=>csvDownload(catalog.map(p=>({name:p.name,sku:p.sku,barcode:p.barcode,category:p.category,stock:Number(p.stock_milli)/1000,cost:Number(p.cost_paisa)/100,price:Number(p.price_paisa)/100})),'vendor-products.csv')}><Download size={16}/>Export</button></div><div className="vp-tools"><label><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search product name or barcode"/></label><select value={category} onChange={e=>setCategory(e.target.value)}><option>All</option>{cats.map(c=><option key={c}>{c}</option>)}</select></div><div className="vp-scanner"><ScanBarcode size={21}/><input value={scan} onChange={e=>setScan(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();scanCatalog()}}} placeholder="Scan barcode, then Enter"/><button onClick={()=>scanCatalog()}>Find / add</button><button type="button" onClick={()=>setCamera(true)}><Camera size={16}/>Camera</button><small>Scan the packet barcode or type it here.</small></div><Table heads={['Product','Barcode','Category','Store / vendor stock','Cost / selling price','Actions']}>{catalog.map(p=><tr key={p.id}><td><div className="vp-product">{p.image?<img src={p.image} alt={p.name}/>:<span><Boxes size={18}/></span>}<div><b>{p.name}</b><small>{p.brand} · {p.pack_size||p.unit}</small></div></div></td><td>{p.barcode||'Not added'}</td><td>{p.category}<small>{p.catalog_status||'active'}</small></td><td><b className={low.includes(p)?'vp-alert':''}>{qty(p.stock_milli)} {p.unit}</b><small>At Star Mart</small><small>At your warehouse: {qty(p.vendor_available_milli||0)} {p.unit}</small></td><td>{money(p.cost_paisa)} / {money(p.price_paisa)}</td><td><button onClick={()=>edit(p)}>Edit & photo</button></td></tr>)}</Table>{!catalog.length&&<p>No matching products. Add your first grocery item.</p>}</section>}
- {['sales','purchases','statement','movements','demand'].includes(view)&&<div className="vp-tools"><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><button className="vp-outline" onClick={()=>{setFrom('');setTo('');setPaymentFilter('All')}}>Clear filters</button></div>}
- {view==='sales'&&<section className="vp-card"><div className="vp-head"><div><h2>Customer sales of your products</h2><p>Customer payment method does not settle Star Mart’s supplier balance.</p></div><select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}><option>All</option>{[...new Set(sales.map(x=>x.payment))].map(x=><option key={x}>{x}</option>)}</select></div><div className="vp-metrics">{[['Filtered sales',money(shownSales.reduce((n,x)=>n+Number(x.line_total_paisa),0))],['Units sold',qty(shownSales.reduce((n,x)=>n+Number(x.qty_milli),0))]].map(([k,v])=><article key={k}><small>{k}</small><strong>{v}</strong></article>)}</div><Table heads={['Date / receipt','Product','Quantity','Amount','Customer paid via']}>{shownSales.map(x=><tr key={x.id}><td>{when(x.created_at)}<small>{x.receipt}</small></td><td>{product(x.product_id)?.name}</td><td>{qty(x.qty_milli)}</td><td>{money(x.line_total_paisa)}</td><td>{x.payment}</td></tr>)}</Table></section>}
- {view==='purchases'&&<section className="vp-card"><h2>Stock physically received by Star Mart</h2><p>Owner records invoice, batch, expiry, quantity and payment at receipt.</p><Table heads={['Date / invoice','Product','Quantity','Batch / expiry','Stock cost','Paid now / method','Credit remaining at receipt']}>{purchases.filter(match).map(p=>{let amount=Math.round(Number(p.qty_milli)*Number(p.unit_cost_paisa)/1000),paid=p.payment==='Paid'?amount:Number(p.paid_paisa);return <tr key={p.id}><td>{when(p.created_at)}<small>{p.invoice||p.id}</small></td><td>{product(p.product_id)?.name}</td><td>{qty(p.qty_milli)}</td><td>{p.batch||'—'}<small>{p.expiry?String(p.expiry).slice(0,10):'Not recorded'}</small></td><td>{money(amount)}</td><td>{money(paid)}<small>{p.payment_method} · {p.payment}</small></td><td>{money(amount-paid)}</td></tr>})}</Table></section>}
- {view==='statement'&&<><div className="vp-metrics">{[['Stock supplied',money(summary.supplied)],['Total paid',money((summary.paidAtReceipt||0)+(summary.paidLater||0))],['Return credits',money(summary.returnCredit)],[Number(summary.balance)<0?'Credit owed by vendor':'Outstanding payable',money(Math.abs(summary.balance||0))]].map(([k,v])=><article key={k}><small>{k}</small><strong>{v}</strong></article>)}</div><section className="vp-card"><div className="vp-head"><div><h2>Supplier account statement</h2><p>Full running balance is retained when filtering dates. Positive balance = Star Mart owes vendor; negative = credit held with vendor.</p></div><button className="vp-outline" onClick={()=>csvDownload(ledger.entries.filter(match).map(x=>({date:when(x.date),type:x.type,reference:x.reference,method:x.method,increase_rs:x.debit/100,reduction_rs:x.credit/100,balance_rs:x.balance/100,note:x.note})),'vendor-statement.csv')}><Download size={16}/>Export statement</button></div><Table heads={['Date','Entry / reference','Method','Stock charges','Payments / credits','Running balance']}>{ledger.entries.filter(match).map(x=><tr key={x.id}><td>{when(x.date)}</td><td>{x.type}<small>{x.reference} · {x.note}</small></td><td>{x.method}</td><td>{x.debit?money(x.debit):'—'}</td><td>{x.credit?money(x.credit):'—'}</td><td><b>{money(x.balance)}</b></td></tr>)}</Table></section></>}
- {view==='movements'&&<section className="vp-card"><h2>Stock audit trail</h2><Table heads={['Date','Product','Type','Quantity change','Batch / expiry','Reason / reference']}>{movements.filter(match).map(m=><tr key={m.id}><td>{when(m.created_at)}</td><td>{product(m.product_id)?.name}</td><td>{m.kind}</td><td>{Number(m.qty_milli)>0?'+':''}{qty(m.qty_milli)}</td><td>{m.batch||'—'}<small>{m.expiry?String(m.expiry).slice(0,10):'—'}</small></td><td>{m.reason}<small>{m.note} · {m.ref_id}</small></td></tr>)}</Table></section>}
- {view==='demand'&&<section className="vp-card"><h2>Orders for your products</h2><p>Pending quantities are reserved. Customer contact details are private to Star Mart.</p><Table heads={['Order / date','Product','Quantity','Value','Fulfillment','Status']}>{(data.demand||[]).filter(match).map((x,i)=><tr key={x.id+i}><td>{x.id}<small>{when(x.created_at)}</small></td><td>{product(x.product_id)?.name}</td><td>{qty(x.qty_milli)}</td><td>{money(x.line_total_paisa)}</td><td>{x.fulfillment}</td><td>{x.status}</td></tr>)}</Table></section>}
- <div className="vp-foot">{data.vendor?.contact} · {data.vendor?.phone} · {data.vendor?.terms||'Ask Star Mart to confirm payment terms'}<br/>Stock receipt, payments and return credits are recorded by the owner. Historical paid receipts without a recorded method display “Unspecified”.</div></>}
- {form&&<div className="vp-overlay"><form className="vp-dialog" onSubmit={save}><div className="vp-head"><div><small>YOUR VENDOR CATALOG</small><h2>{form.id?'Edit grocery product':'Add grocery product'}</h2></div><button type="button" onClick={()=>{stopCamera();setForm(null);setPhoto(null)}} aria-label="Close"><X/></button></div><ProductBarcode value={form.barcode} onChange={code=>setForm(prev=>({...prev,barcode:code}))}/><label className="vp-photo"><ImagePlus size={28}/><span>{photo?photo.name:form.image?'Replace product photo':'Upload product photo'}<small>JPG, PNG or WebP · automatically resized</small></span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setPhoto(e.target.files?.[0]||null)}/>{form.image&&!photo&&<img src={form.image} alt="Current product"/>}</label><div className="vp-fields">{[['name','Product name'],['brand','Brand'],['packSize','Pack size e.g. 500g'],['cost','Supply cost / unit (Rs)'],['price','Selling price / unit (Rs)'],['vendorAvailable','Available stock at your warehouse']].map(([k,label])=><label key={k}>{label}<input required={['name','cost','price'].includes(k)} type={['cost','price','vendorAvailable','reorder','reorderQty'].includes(k)?'number':'text'} min="0" step={['cost','price'].includes(k)?'.01':'1'} value={form[k]??''} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<label>Category<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{(form.category&&!cats.includes(form.category)?[...cats,form.category]:cats).map(c=><option key={c}>{c}</option>)}</select></label><label>Unit<select value={form.unit||'piece'} onChange={e=>setForm({...form,unit:e.target.value})}>{['piece','pack','box','kg','litre'].map(u=><option key={u}>{u}</option>)}</select></label><label className="vp-wide">Description<textarea value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})}/></label></div>{error&&<p className="vp-error">{error}</p>}<p className="vp-form-note">Available stock is what you can supply from your warehouse. Store stock increases only when the owner records received goods. Existing packet barcode must be unique across the store.</p><button className="vp-primary" disabled={busy}>{busy?'Saving product…':'Save product & image'}</button></form></div>}
- {camera&&<BarcodeCamera onClose={stopCamera} onScan={code=>{setCamera(false);scanCatalog(code)}}/>}</main></div>
+import { useLiveRefresh } from './live.js';
+const money = n =>
+  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+const qty = n =>
+  Math.round(Number(n || 0) / 1000).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+const when = v => new Date(v).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' });
+const cats = GROCERY_CATEGORIES;
+async function request(path, method = 'GET', payload) {
+  let r = await fetch('/api' + path, {
+      method,
+      credentials: 'same-origin',
+      headers: payload ? { 'content-type': 'application/json' } : {},
+      body: payload ? JSON.stringify(payload) : undefined,
+    }),
+    j = await r.json();
+  if (!r.ok) throw Error(j.error || 'Request failed');
+  return j;
+}
+const empty = {
+  name: '',
+  sku: '',
+  barcode: '',
+  brand: '',
+  category: 'Frozen & Instant Foods',
+  packSize: '',
+  unit: 'piece',
+  price: '',
+  cost: '',
+  reorder: 5,
+  reorderQty: 10,
+  description: '',
+};
+const nav = [
+  ['overview', 'Overview', Boxes],
+  ['products', 'Product catalog', Boxes],
+  ['sales', 'Customer sales', ShoppingBag],
+  ['purchases', 'Stock received', Truck],
+  ['statement', 'Supplier statement', Wallet],
+  ['demand', 'Order demand', ShoppingBag],
+  ['movements', 'Stock history', ClipboardList],
+];
+function csvDownload(rows, name) {
+  let keys = Object.keys(rows[0] || {});
+  if (!keys.length) return;
+  let quote = x => '"' + String(x ?? '').replaceAll('"', '""') + '"';
+  let content = [keys, ...rows.map(r => keys.map(k => r[k]))]
+    .map(r => r.map(quote).join(','))
+    .join('\r\n');
+  let url = URL.createObjectURL(new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' }));
+  let a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function Table({ heads, children }) {
+  return (
+    <div className="vp-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {heads.map(h => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+export default function VendorPanel({ onLogout }) {
+  const [data, setData] = useState(null),
+    [view, setView] = useState('overview'),
+    [form, setForm] = useState(null),
+    [photo, setPhoto] = useState(null),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState(''),
+    [search, setSearch] = useState(''),
+    [category, setCategory] = useState('All'),
+    [paymentFilter, setPaymentFilter] = useState('All'),
+    [from, setFrom] = useState(''),
+    [to, setTo] = useState(''),
+    [selected, setSelected] = useState([]),
+    [scan, setScan] = useState(''),
+    [camera, setCamera] = useState(false);
+  let barcode = useRef(),
+    video = useRef(),
+    stream = useRef(),
+    timer = useRef();
+  async function load() {
+    try {
+      setData(await request('/vendor/overview'));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+  useEffect(() => setSelected([]), [search, category]);
+  useLiveRefresh(load);
+  useEffect(() => () => stopCamera(), []);
+  const products = (data?.products || []).filter(p => !p.deleted_at),
+    purchases = data?.purchases || [],
+    sales = data?.sales || [],
+    movements = data?.movements || [],
+    ledger = data?.ledger || { entries: [], returns: [], summary: {} },
+    summary = ledger.summary,
+    product = id => products.find(p => p.id === id),
+    low = products.filter(p => Number(p.stock_milli) <= Number(p.reorder_milli));
+  const match = x =>
+    (!from || new Date(x.created_at || x.date) >= new Date(from + 'T00:00:00')) &&
+    (!to || new Date(x.created_at || x.date) <= new Date(to + 'T23:59:59.999'));
+  const catalog = products.filter(
+    p =>
+      (category === 'All' || p.category === category) &&
+      (p.name + ' ' + p.sku + ' ' + p.barcode + ' ' + p.brand)
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
+  const shownSales = sales.filter(
+    s => match(s) && (paymentFilter === 'All' || s.payment === paymentFilter)
+  );
+  function edit(p) {
+    stopCamera();
+    setPhoto(null);
+    setError('');
+    setForm(
+      p
+        ? {
+            ...p,
+            packSize: p.pack_size,
+            vendorAvailable: Number(p.vendor_available_milli || 0) / 1000,
+            cost: Number(p.cost_paisa) / 100,
+            price: Number(p.price_paisa) / 100,
+            reorder: Number(p.reorder_milli) / 1000,
+            reorderQty: Number(p.reorder_qty_milli) / 1000,
+          }
+        : { ...empty }
+    );
+  }
+  async function uploadImage(pid, file) {
+    let bmp = await createImageBitmap(file),
+      scale = Math.min(1, 900 / Math.max(bmp.width, bmp.height)),
+      canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale));
+    canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    let blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82));
+    if (!blob) throw Error('Could not process picture');
+    let r = await fetch('/api/products/' + pid + '/image', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: blob,
+      }),
+      j = await r.json();
+    if (!r.ok) throw Error(j.error || 'Image upload failed');
+  }
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    let saved;
+    try {
+      let payload = { ...form };
+      if (!form.id && !payload.sku)
+        payload.sku = 'SM-' + crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase();
+      delete payload.id;
+      saved = await request(
+        form.id ? '/products/' + form.id : '/products',
+        form.id ? 'PUT' : 'POST',
+        payload
+      );
+      if (photo) await uploadImage(saved.id, photo);
+      setForm(null);
+      setPhoto(null);
+      stopCamera();
+      await load();
+      setNotice(
+        'Product saved to your catalog. Owner records actual received stock before customer orders.'
+      );
+    } catch (e) {
+      if (saved) {
+        setForm({ ...form, id: saved.id });
+        await load();
+        setError('Product saved, but image failed: ' + e.message + '. Retry to upload it.');
+      } else setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function scanCatalog(value = scan) {
+    let code = value.trim(),
+      p = products.find(p => p.barcode === code || p.sku === code);
+    if (!code) return;
+    if (p) {
+      setView('products');
+      setSearch(code);
+      setNotice(p.name + ' · ' + qty(p.stock_milli) + ' ' + p.unit + ' remaining');
+    } else {
+      edit();
+      setForm({ ...empty, barcode: code });
+      setNotice('New barcode: complete the product details.');
+    }
+    setScan('');
+  }
+  function stopCamera() {
+    setCamera(false);
+  }
+  const title = nav.find(n => n[0] === view)?.[1];
+  return (
+    <div className="vp">
+      <aside className="vp-side">
+        <a className="vp-logo" href="/shop">
+          <img src="/logo.png" alt="Star Mart" />
+        </a>
+        <div className="vp-label">SUPPLIER WORKSPACE</div>
+        <nav>
+          {nav.map(([key, label, Icon]) => (
+            <button
+              key={key}
+              className={view === key ? 'active' : ''}
+              onClick={() => {
+                setView(key);
+                setError('');
+              }}
+            >
+              <Icon size={18} />
+              {label}
+              {key === 'products' && <em>{products.length}</em>}
+            </button>
+          ))}
+        </nav>
+        <div className="vp-bottom">
+          <div className="vp-avatar">{data?.vendor?.name?.slice(0, 1) || 'V'}</div>
+          <strong>{data?.vendor?.name || 'Vendor account'}</strong>
+          <span>{data?.vendor?.email}</span>
+          <button onClick={onLogout}>
+            <LogOut size={17} /> Sign out
+          </button>
+        </div>
+      </aside>
+      <main className="vp-main">
+        <header>
+          <div>
+            <small>STAR MART / VENDOR OPERATIONS</small>
+            <h1>{title}</h1>
+            <p className="vp-subtitle">Your catalog, stock and supplier account in clear view.</p>
+          </div>
+          <div className="vp-buttons">
+            <button className="vp-outline" disabled={busy} onClick={load}>
+              <RefreshCw size={16} /> Refresh
+            </button>
+            <button className="vp-primary" onClick={() => edit()}>
+              <Plus size={17} /> Add product
+            </button>
+          </div>
+        </header>
+        {error && (
+          <p className="vp-error" role="alert">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="vp-note" role="status">
+            {notice}
+            <button onClick={() => setNotice('')}>×</button>
+          </p>
+        )}
+        <PasswordChange kind="vendor" />
+        {!data ? (
+          <p>Loading supplier account…</p>
+        ) : (
+          <>
+            {view === 'overview' && (
+              <>
+                <section className="vp-hero">
+                  <div>
+                    <span>YOUR PARTNERSHIP WITH STAR MART</span>
+                    <h2>
+                      Every delivery.
+                      <br />
+                      Every rupee accounted for.
+                    </h2>
+                    <p>
+                      Stock supplied, customer sales and payments to you are tracked separately.
+                    </p>
+                    <button onClick={() => setView('statement')}>
+                      View supplier statement <ArrowUpRight size={17} />
+                    </button>
+                  </div>
+                  <img src="/vendor-grocery.png" alt="Grocery shelves" />
+                </section>
+                <div className="vp-metrics">
+                  {[
+                    ['Catalog items', products.length],
+                    [
+                      'Stock available',
+                      qty(products.reduce((n, p) => n + Number(p.stock_milli), 0)),
+                    ],
+                    ['Units sold', qty(sales.reduce((n, p) => n + Number(p.qty_milli), 0))],
+                    [
+                      Number(summary.balance) < 0 ? 'Vendor credit held' : 'Store owes you',
+                      money(Math.abs(summary.balance || 0)),
+                    ],
+                  ].map(([k, v]) => (
+                    <article key={k}>
+                      <small>{k}</small>
+                      <strong>{v}</strong>
+                    </article>
+                  ))}
+                </div>
+                <div className="vp-grid">
+                  <section className="vp-card">
+                    <div className="vp-head">
+                      <h2>Low stock watch</h2>
+                      <AlertTriangle size={20} />
+                    </div>
+                    {low.slice(0, 6).map(p => (
+                      <div className="vp-line" key={p.id}>
+                        <span>
+                          {p.name}
+                          <small>
+                            Reorder at {qty(p.reorder_milli)} {p.unit}
+                          </small>
+                        </span>
+                        <b className="vp-alert">{qty(p.stock_milli)} left</b>
+                      </div>
+                    ))}
+                    {!low.length && <p>All products are above their reorder levels.</p>}
+                  </section>
+                  <section className="vp-card">
+                    <h2>Latest supplier entries</h2>
+                    {ledger.entries
+                      .slice(-6)
+                      .reverse()
+                      .map(x => (
+                        <div className="vp-line" key={x.id}>
+                          <span>
+                            {x.type}
+                            <small>
+                              {when(x.date)} · {x.reference}
+                            </small>
+                          </span>
+                          <b>{money(x.debit || x.credit)}</b>
+                        </div>
+                      ))}
+                    {!ledger.entries.length && (
+                      <p>Your first stock receipt will start this statement.</p>
+                    )}
+                  </section>
+                </div>
+              </>
+            )}
+            {view === 'products' && (
+              <section className="vp-card">
+                <div className="vp-head">
+                  <div>
+                    <h2>Your product catalog</h2>
+                    <p>Every product is automatically linked to your vendor account.</p>
+                  </div>
+                  <button
+                    className="vp-outline"
+                    onClick={() =>
+                      csvDownload(
+                        catalog.map(p => ({
+                          name: p.name,
+                          sku: p.sku,
+                          barcode: p.barcode,
+                          category: p.category,
+                          stock: Number(p.stock_milli) / 1000,
+                          cost: Number(p.cost_paisa) / 100,
+                          price: Number(p.price_paisa) / 100,
+                        })),
+                        'vendor-products.csv'
+                      )
+                    }
+                  >
+                    <Download size={16} />
+                    Export
+                  </button>
+                </div>
+                <div className="vp-tools">
+                  <label>
+                    <Search size={17} />
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search product name or barcode"
+                    />
+                  </label>
+                  <select value={category} onChange={e => setCategory(e.target.value)}>
+                    <option>All</option>
+                    {cats.map(c => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="vp-scanner">
+                  <ScanBarcode size={21} />
+                  <input
+                    value={scan}
+                    onChange={e => setScan(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        scanCatalog();
+                      }
+                    }}
+                    placeholder="Scan barcode, then Enter"
+                  />
+                  <button onClick={() => scanCatalog()}>Find / add</button>
+                  <button type="button" onClick={() => setCamera(true)}>
+                    <Camera size={16} />
+                    Camera
+                  </button>
+                  <small>Scan the packet barcode or type it here.</small>
+                </div>
+                <Table
+                  heads={[
+                    'Product',
+                    'Barcode',
+                    'Category',
+                    'Store / vendor stock',
+                    'Cost / selling price',
+                    'Actions',
+                  ]}
+                >
+                  {catalog.map(p => (
+                    <tr key={p.id}>
+                      <td>
+                        <div className="vp-product">
+                          {p.image ? (
+                            <img src={p.image} alt={p.name} />
+                          ) : (
+                            <span>
+                              <Boxes size={18} />
+                            </span>
+                          )}
+                          <div>
+                            <b>{p.name}</b>
+                            <small>
+                              {p.brand} · {p.pack_size || p.unit}
+                            </small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{p.barcode || 'Not added'}</td>
+                      <td>
+                        {p.category}
+                        <small>{p.catalog_status || 'active'}</small>
+                      </td>
+                      <td>
+                        <b className={low.includes(p) ? 'vp-alert' : ''}>
+                          {qty(p.stock_milli)} {p.unit}
+                        </b>
+                        <small>At Star Mart</small>
+                        <small>
+                          At your warehouse: {qty(p.vendor_available_milli || 0)} {p.unit}
+                        </small>
+                      </td>
+                      <td>
+                        {money(p.cost_paisa)} / {money(p.price_paisa)}
+                      </td>
+                      <td>
+                        <button onClick={() => edit(p)}>Edit & photo</button>
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+                {!catalog.length && <p>No matching products. Add your first grocery item.</p>}
+              </section>
+            )}
+            {['sales', 'purchases', 'statement', 'movements', 'demand'].includes(view) && (
+              <div className="vp-tools">
+                <label>
+                  From
+                  <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
+                </label>
+                <label>
+                  To
+                  <input type="date" value={to} onChange={e => setTo(e.target.value)} />
+                </label>
+                <button
+                  className="vp-outline"
+                  onClick={() => {
+                    setFrom('');
+                    setTo('');
+                    setPaymentFilter('All');
+                  }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+            {view === 'sales' && (
+              <section className="vp-card">
+                <div className="vp-head">
+                  <div>
+                    <h2>Customer sales of your products</h2>
+                    <p>Customer payment method does not settle Star Mart’s supplier balance.</p>
+                  </div>
+                  <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}>
+                    <option>All</option>
+                    {[...new Set(sales.map(x => x.payment))].map(x => (
+                      <option key={x}>{x}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="vp-metrics">
+                  {[
+                    [
+                      'Filtered sales',
+                      money(shownSales.reduce((n, x) => n + Number(x.line_total_paisa), 0)),
+                    ],
+                    ['Units sold', qty(shownSales.reduce((n, x) => n + Number(x.qty_milli), 0))],
+                  ].map(([k, v]) => (
+                    <article key={k}>
+                      <small>{k}</small>
+                      <strong>{v}</strong>
+                    </article>
+                  ))}
+                </div>
+                <Table
+                  heads={['Date / receipt', 'Product', 'Quantity', 'Amount', 'Customer paid via']}
+                >
+                  {shownSales.map(x => (
+                    <tr key={x.id}>
+                      <td>
+                        {when(x.created_at)}
+                        <small>{x.receipt}</small>
+                      </td>
+                      <td>{product(x.product_id)?.name}</td>
+                      <td>{qty(x.qty_milli)}</td>
+                      <td>{money(x.line_total_paisa)}</td>
+                      <td>{x.payment}</td>
+                    </tr>
+                  ))}
+                </Table>
+              </section>
+            )}
+            {view === 'purchases' && (
+              <section className="vp-card">
+                <h2>Stock physically received by Star Mart</h2>
+                <p>Owner records invoice, batch, expiry, quantity and payment at receipt.</p>
+                <Table
+                  heads={[
+                    'Date / invoice',
+                    'Product',
+                    'Quantity',
+                    'Batch / expiry',
+                    'Stock cost',
+                    'Paid now / method',
+                    'Credit remaining at receipt',
+                  ]}
+                >
+                  {purchases.filter(match).map(p => {
+                    let amount = Math.round(
+                        (Number(p.qty_milli) * Number(p.unit_cost_paisa)) / 1000
+                      ),
+                      paid = p.payment === 'Paid' ? amount : Number(p.paid_paisa);
+                    return (
+                      <tr key={p.id}>
+                        <td>
+                          {when(p.created_at)}
+                          <small>{p.invoice || p.id}</small>
+                        </td>
+                        <td>{product(p.product_id)?.name}</td>
+                        <td>{qty(p.qty_milli)}</td>
+                        <td>
+                          {p.batch || '—'}
+                          <small>{p.expiry ? String(p.expiry).slice(0, 10) : 'Not recorded'}</small>
+                        </td>
+                        <td>{money(amount)}</td>
+                        <td>
+                          {money(paid)}
+                          <small>
+                            {p.payment_method} · {p.payment}
+                          </small>
+                        </td>
+                        <td>{money(amount - paid)}</td>
+                      </tr>
+                    );
+                  })}
+                </Table>
+              </section>
+            )}
+            {view === 'statement' && (
+              <>
+                <div className="vp-metrics">
+                  {[
+                    ['Stock supplied', money(summary.supplied)],
+                    ['Total paid', money((summary.paidAtReceipt || 0) + (summary.paidLater || 0))],
+                    ['Return credits', money(summary.returnCredit)],
+                    [
+                      Number(summary.balance) < 0 ? 'Credit owed by vendor' : 'Outstanding payable',
+                      money(Math.abs(summary.balance || 0)),
+                    ],
+                  ].map(([k, v]) => (
+                    <article key={k}>
+                      <small>{k}</small>
+                      <strong>{v}</strong>
+                    </article>
+                  ))}
+                </div>
+                <section className="vp-card">
+                  <div className="vp-head">
+                    <div>
+                      <h2>Supplier account statement</h2>
+                      <p>
+                        Full running balance is retained when filtering dates. Positive balance =
+                        Star Mart owes vendor; negative = credit held with vendor.
+                      </p>
+                    </div>
+                    <button
+                      className="vp-outline"
+                      onClick={() =>
+                        csvDownload(
+                          ledger.entries
+                            .filter(match)
+                            .map(x => ({
+                              date: when(x.date),
+                              type: x.type,
+                              reference: x.reference,
+                              method: x.method,
+                              increase_rs: x.debit / 100,
+                              reduction_rs: x.credit / 100,
+                              balance_rs: x.balance / 100,
+                              note: x.note,
+                            })),
+                          'vendor-statement.csv'
+                        )
+                      }
+                    >
+                      <Download size={16} />
+                      Export statement
+                    </button>
+                  </div>
+                  <Table
+                    heads={[
+                      'Date',
+                      'Entry / reference',
+                      'Method',
+                      'Stock charges',
+                      'Payments / credits',
+                      'Running balance',
+                    ]}
+                  >
+                    {ledger.entries.filter(match).map(x => (
+                      <tr key={x.id}>
+                        <td>{when(x.date)}</td>
+                        <td>
+                          {x.type}
+                          <small>
+                            {x.reference} · {x.note}
+                          </small>
+                        </td>
+                        <td>{x.method}</td>
+                        <td>{x.debit ? money(x.debit) : '—'}</td>
+                        <td>{x.credit ? money(x.credit) : '—'}</td>
+                        <td>
+                          <b>{money(x.balance)}</b>
+                        </td>
+                      </tr>
+                    ))}
+                  </Table>
+                </section>
+              </>
+            )}
+            {view === 'movements' && (
+              <section className="vp-card">
+                <h2>Stock audit trail</h2>
+                <Table
+                  heads={[
+                    'Date',
+                    'Product',
+                    'Type',
+                    'Quantity change',
+                    'Batch / expiry',
+                    'Reason / reference',
+                  ]}
+                >
+                  {movements.filter(match).map(m => (
+                    <tr key={m.id}>
+                      <td>{when(m.created_at)}</td>
+                      <td>{product(m.product_id)?.name}</td>
+                      <td>{m.kind}</td>
+                      <td>
+                        {Number(m.qty_milli) > 0 ? '+' : ''}
+                        {qty(m.qty_milli)}
+                      </td>
+                      <td>
+                        {m.batch || '—'}
+                        <small>{m.expiry ? String(m.expiry).slice(0, 10) : '—'}</small>
+                      </td>
+                      <td>
+                        {m.reason}
+                        <small>
+                          {m.note} · {m.ref_id}
+                        </small>
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+              </section>
+            )}
+            {view === 'demand' && (
+              <section className="vp-card">
+                <h2>Orders for your products</h2>
+                <p>
+                  Pending quantities are reserved. Customer contact details are private to Star
+                  Mart.
+                </p>
+                <Table
+                  heads={['Order / date', 'Product', 'Quantity', 'Value', 'Fulfillment', 'Status']}
+                >
+                  {(data.demand || []).filter(match).map((x, i) => (
+                    <tr key={x.id + i}>
+                      <td>
+                        {x.id}
+                        <small>{when(x.created_at)}</small>
+                      </td>
+                      <td>{product(x.product_id)?.name}</td>
+                      <td>{qty(x.qty_milli)}</td>
+                      <td>{money(x.line_total_paisa)}</td>
+                      <td>{x.fulfillment}</td>
+                      <td>{x.status}</td>
+                    </tr>
+                  ))}
+                </Table>
+              </section>
+            )}
+            <div className="vp-foot">
+              {data.vendor?.contact} · {data.vendor?.phone} ·{' '}
+              {data.vendor?.terms || 'Ask Star Mart to confirm payment terms'}
+              <br />
+              Stock receipt, payments and return credits are recorded by the owner. Historical paid
+              receipts without a recorded method display “Unspecified”.
+            </div>
+          </>
+        )}
+        {form && (
+          <div className="vp-overlay">
+            <form className="vp-dialog" onSubmit={save}>
+              <div className="vp-head">
+                <div>
+                  <small>YOUR VENDOR CATALOG</small>
+                  <h2>{form.id ? 'Edit grocery product' : 'Add grocery product'}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopCamera();
+                    setForm(null);
+                    setPhoto(null);
+                  }}
+                  aria-label="Close"
+                >
+                  <X />
+                </button>
+              </div>
+              <ProductBarcode
+                value={form.barcode}
+                onChange={code => setForm(prev => ({ ...prev, barcode: code }))}
+              />
+              <label className="vp-photo">
+                <ImagePlus size={28} />
+                <span>
+                  {photo
+                    ? photo.name
+                    : form.image
+                      ? 'Replace product photo'
+                      : 'Upload product photo'}
+                  <small>JPG, PNG or WebP · automatically resized</small>
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={e => setPhoto(e.target.files?.[0] || null)}
+                />
+                {form.image && !photo && <img src={form.image} alt="Current product" />}
+              </label>
+              <div className="vp-fields">
+                {[
+                  ['name', 'Product name'],
+                  ['brand', 'Brand'],
+                  ['packSize', 'Pack size e.g. 500g'],
+                  ['cost', 'Supply cost / unit (Rs)'],
+                  ['price', 'Selling price / unit (Rs)'],
+                  ['vendorAvailable', 'Available stock at your warehouse'],
+                ].map(([k, label]) => (
+                  <label key={k}>
+                    {label}
+                    <input
+                      required={['name', 'cost', 'price'].includes(k)}
+                      type={
+                        ['cost', 'price', 'vendorAvailable', 'reorder', 'reorderQty'].includes(k)
+                          ? 'number'
+                          : 'text'
+                      }
+                      min="0"
+                      step={['cost', 'price'].includes(k) ? '.01' : '1'}
+                      value={form[k] ?? ''}
+                      onChange={e => setForm({ ...form, [k]: e.target.value })}
+                    />
+                  </label>
+                ))}
+                <label>
+                  Category
+                  <select
+                    value={form.category}
+                    onChange={e => setForm({ ...form, category: e.target.value })}
+                  >
+                    {(form.category && !cats.includes(form.category)
+                      ? [...cats, form.category]
+                      : cats
+                    ).map(c => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Unit
+                  <select
+                    value={form.unit || 'piece'}
+                    onChange={e => setForm({ ...form, unit: e.target.value })}
+                  >
+                    {['piece', 'pack', 'box', 'kg', 'litre'].map(u => (
+                      <option key={u}>{u}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="vp-wide">
+                  Description
+                  <textarea
+                    value={form.description || ''}
+                    onChange={e => setForm({ ...form, description: e.target.value })}
+                  />
+                </label>
+              </div>
+              {error && <p className="vp-error">{error}</p>}
+              <p className="vp-form-note">
+                Available stock is what you can supply from your warehouse. Store stock increases
+                only when the owner records received goods. Existing packet barcode must be unique
+                across the store.
+              </p>
+              <button className="vp-primary" disabled={busy}>
+                {busy ? 'Saving product…' : 'Save product & image'}
+              </button>
+            </form>
+          </div>
+        )}
+        {camera && (
+          <BarcodeCamera
+            onClose={stopCamera}
+            onScan={code => {
+              setCamera(false);
+              scanCatalog(code);
+            }}
+          />
+        )}
+      </main>
+    </div>
+  );
 }

@@ -1,11 +1,204 @@
-import React,{useEffect,useRef,useState} from 'react';
-import {Camera,X,ScanBarcode} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, X, ScanBarcode } from 'lucide-react';
 import './barcode-scanner.css';
-export function BarcodeCamera({onScan,onClose}){
- const video=useRef(null),callback=useRef(onScan),close=useRef(onClose),[error,setError]=useState(''),[status,setStatus]=useState('Opening camera…'),[captured,setCaptured]=useState(''),[run,setRun]=useState(0);callback.current=onScan;close.current=onClose;
- useEffect(()=>{let disposed=false,controls,stream,reader,accepted=false;const previous=document.activeElement;video.current?.parentElement.querySelector('button')?.focus();const key=e=>{if(e.key==='Escape')close.current();if(e.key==='Tab'){const nodes=Array.from(video.current?.closest('.sm-barcode-panel')?.querySelectorAll('button')||[]);if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1)?.focus()}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0]?.focus()}}};document.addEventListener('keydown',key);
- const stop=()=>{controls?.stop();stream?.getTracks().forEach(t=>t.stop())};
- async function begin(){try{if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera needs HTTPS or localhost. Use manual barcode entry instead.');const [{BrowserMultiFormatReader},{BarcodeFormat,DecodeHintType}]=await Promise.all([import('@zxing/browser'),import('@zxing/library')]);if(disposed)return;stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});if(disposed){stop();return}const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.EAN_13,BarcodeFormat.EAN_8,BarcodeFormat.UPC_A,BarcodeFormat.UPC_E,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39,BarcodeFormat.ITF]]]);reader=new BrowserMultiFormatReader(hints,{delayBetweenScanAttempts:200,delayBetweenScanSuccess:1000});setStatus('Hold the packet barcode inside the frame');controls=await reader.decodeFromStream(stream,video.current,(result,err,c)=>{if(!result||disposed||accepted)return;accepted=true;c.stop();stop();const code=result.getText();setCaptured(code);setStatus('Barcode captured');callback.current(code)});if(disposed||accepted)stop()}catch(e){stop();if(!disposed){setStatus('');setError(e.name==='NotAllowedError'?'Camera permission denied. Allow camera in browser settings, or enter the barcode manually.':e.name==='NotFoundError'?'No camera found. Use manual entry or a USB scanner.':e.name==='NotReadableError'?'Camera is busy. Close other camera apps and retry.':e.message||'Could not start camera.')}}}begin();return()=>{disposed=true;stop();document.removeEventListener('keydown',key);previous?.focus?.()}},[run]);
- return <div className="sm-barcode-overlay"><section className="sm-barcode-panel" role="dialog" aria-modal="true" aria-label="Camera barcode scanner"><header><div><strong>Scan product barcode</strong><small>EAN · UPC · Code 128</small></div><button type="button" onClick={onClose} aria-label="Close camera"><X size={22}/></button></header><div className="sm-barcode-preview"><video ref={video} muted playsInline autoPlay/><div className="sm-barcode-guide"/></div><p role="status">{status}{captured&&<b> {captured}</b>}</p>{error&&<p role="alert" className="sm-barcode-error">{error}</p>}<footer>{(error||captured)&&<button type="button" onClick={()=>{setCaptured('');setError('');setStatus('Opening camera…');setRun(n=>n+1)}}><Camera size={17}/>{captured?'Scan next item':'Retry camera'}</button>}<button type="button" onClick={onClose}>Done / manual entry</button></footer><small className="sm-barcode-note">One scan adds one item. Tap “Scan next item” to scan another, including the same product.</small></section></div>
+export function BarcodeCamera({ onScan, onClose }) {
+  const video = useRef(null),
+    callback = useRef(onScan),
+    close = useRef(onClose),
+    [error, setError] = useState(''),
+    [status, setStatus] = useState('Opening camera…'),
+    [captured, setCaptured] = useState(''),
+    [run, setRun] = useState(0);
+  callback.current = onScan;
+  close.current = onClose;
+  useEffect(() => {
+    let disposed = false,
+      controls,
+      stream,
+      reader,
+      accepted = false;
+    const previous = document.activeElement;
+    video.current?.parentElement.querySelector('button')?.focus();
+    const key = e => {
+      if (e.key === 'Escape') close.current();
+      if (e.key === 'Tab') {
+        const nodes = Array.from(
+          video.current?.closest('.sm-barcode-panel')?.querySelectorAll('button') || []
+        );
+        if (e.shiftKey && document.activeElement === nodes[0]) {
+          e.preventDefault();
+          nodes.at(-1)?.focus();
+        } else if (!e.shiftKey && document.activeElement === nodes.at(-1)) {
+          e.preventDefault();
+          nodes[0]?.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', key);
+    const stop = () => {
+      controls?.stop();
+      stream?.getTracks().forEach(t => t.stop());
+    };
+    async function begin() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia)
+          throw Error('Camera needs HTTPS or localhost. Use manual barcode entry instead.');
+        const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all(
+          [import('@zxing/browser'), import('@zxing/library')]
+        );
+        if (disposed) return;
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+        if (disposed) {
+          stop();
+          return;
+        }
+        const hints = new Map([
+          [
+            DecodeHintType.POSSIBLE_FORMATS,
+            [
+              BarcodeFormat.EAN_13,
+              BarcodeFormat.EAN_8,
+              BarcodeFormat.UPC_A,
+              BarcodeFormat.UPC_E,
+              BarcodeFormat.CODE_128,
+              BarcodeFormat.CODE_39,
+              BarcodeFormat.ITF,
+            ],
+          ],
+        ]);
+        reader = new BrowserMultiFormatReader(hints, {
+          delayBetweenScanAttempts: 200,
+          delayBetweenScanSuccess: 1000,
+        });
+        setStatus('Hold the packet barcode inside the frame');
+        controls = await reader.decodeFromStream(stream, video.current, (result, err, c) => {
+          if (!result || disposed || accepted) return;
+          accepted = true;
+          c.stop();
+          stop();
+          const code = result.getText();
+          setCaptured(code);
+          setStatus('Barcode captured');
+          callback.current(code);
+        });
+        if (disposed || accepted) stop();
+      } catch (e) {
+        stop();
+        if (!disposed) {
+          setStatus('');
+          setError(
+            e.name === 'NotAllowedError'
+              ? 'Camera permission denied. Allow camera in browser settings, or enter the barcode manually.'
+              : e.name === 'NotFoundError'
+                ? 'No camera found. Use manual entry or a USB scanner.'
+                : e.name === 'NotReadableError'
+                  ? 'Camera is busy. Close other camera apps and retry.'
+                  : e.message || 'Could not start camera.'
+          );
+        }
+      }
+    }
+    begin();
+    return () => {
+      disposed = true;
+      stop();
+      document.removeEventListener('keydown', key);
+      previous?.focus?.();
+    };
+  }, [run]);
+  return (
+    <div className="sm-barcode-overlay">
+      <section
+        className="sm-barcode-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Camera barcode scanner"
+      >
+        <header>
+          <div>
+            <strong>Scan product barcode</strong>
+            <small>EAN · UPC · Code 128</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close camera">
+            <X size={22} />
+          </button>
+        </header>
+        <div className="sm-barcode-preview">
+          <video ref={video} muted playsInline autoPlay />
+          <div className="sm-barcode-guide" />
+        </div>
+        <p role="status">
+          {status}
+          {captured && <b> {captured}</b>}
+        </p>
+        {error && (
+          <p role="alert" className="sm-barcode-error">
+            {error}
+          </p>
+        )}
+        <footer>
+          {(error || captured) && (
+            <button
+              type="button"
+              onClick={() => {
+                setCaptured('');
+                setError('');
+                setStatus('Opening camera…');
+                setRun(n => n + 1);
+              }}
+            >
+              <Camera size={17} />
+              {captured ? 'Scan next item' : 'Retry camera'}
+            </button>
+          )}
+          <button type="button" onClick={onClose}>
+            Done / manual entry
+          </button>
+        </footer>
+        <small className="sm-barcode-note">
+          One scan adds one item. Tap “Scan next item” to scan another, including the same product.
+        </small>
+      </section>
+    </div>
+  );
 }
-export function ProductBarcode({value,onChange}){const [camera,setCamera]=useState(false);return <div className="sm-product-barcode"><label>Packet barcode<input aria-label="Packet barcode" value={value||''} onChange={e=>onChange(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')e.preventDefault()}} placeholder="Scan with USB scanner or type barcode"/></label><button type="button" onClick={()=>setCamera(true)}><ScanBarcode size={18}/>Scan with camera</button><small>Scan first, then add name, pack size, prices and stock. Keep leading zeros.</small>{camera&&<BarcodeCamera onClose={()=>setCamera(false)} onScan={code=>{onChange(code);setCamera(false)}}/>}</div>}
+export function ProductBarcode({ value, onChange }) {
+  const [camera, setCamera] = useState(false);
+  return (
+    <div className="sm-product-barcode">
+      <label>
+        Packet barcode
+        <input
+          aria-label="Packet barcode"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') e.preventDefault();
+          }}
+          placeholder="Scan with USB scanner or type barcode"
+        />
+      </label>
+      <button type="button" onClick={() => setCamera(true)}>
+        <ScanBarcode size={18} />
+        Scan with camera
+      </button>
+      <small>Scan first, then add name, pack size, prices and stock. Keep leading zeros.</small>
+      {camera && (
+        <BarcodeCamera
+          onClose={() => setCamera(false)}
+          onScan={code => {
+            onChange(code);
+            setCamera(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}

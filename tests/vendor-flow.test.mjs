@@ -1,10 +1,186 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Readable} from 'node:stream';
-import {mkdtemp,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {handle} from '../server/api.mjs';
-import {close} from '../server/db.mjs';
-async function call(path,method='GET',payload,cookie=''){let raw=payload?Buffer.from(JSON.stringify(payload)):Buffer.alloc(0),req=Readable.from(raw.length?[raw]:[]);req.url='/api'+path;req.method=method;req.headers={cookie,host:'localhost:8787'};let status,headers,output='';let res={writeHead(s,h){status=s;headers=h},end(x){output+=x||''}};await handle(req,res);return {status,headers,body:JSON.parse(output)}}
-test('vendor application, approval, own catalog, sales, supplier credit and staff limits',async()=>{let dir=await mkdtemp(join(tmpdir(),'star-vendor-'));process.env.STAR_MART_DATA_DIR=dir;try{let a=await call('/vendor/apply','POST',{business:'Green Farm',contact:'Ali',email:'ali@example.com',phone:'03001234567'});assert.equal(a.status,201,JSON.stringify(a.body));await call('/setup','POST',{name:'Owner',password:'sixpass'});let owner=(await call('/login','POST',{password:'sixpass'})).headers['set-cookie'].split(';')[0],admin=(path,method='GET',body)=>call(path,method,body,owner);let applications=await admin('/vendor/applications');assert.equal(applications.body.applications.length,1);let approved=await admin('/vendor/applications/'+a.body.id+'/approve','POST',{password:'vendorpass'});assert.equal(approved.status,201,JSON.stringify(approved.body));let vendor=(await call('/account/login','POST',{email:'ali@example.com',password:'vendorpass'})).headers['set-cookie'].split(';')[0],supplier=(path,method='GET',body)=>call(path,method,body,vendor);let before=(await call('/live/version')).body.version;let p=await supplier('/products','POST',{name:'Oranges',category:'Fruits',sku:'ORG-1',vendorId:'bad',opening:999,price:'120',cost:'80'});assert.equal(p.status,201,JSON.stringify(p.body));assert.notEqual((await call('/live/version')).body.version,before);let pid=p.body.id;assert.equal(p.body.vendor_id,approved.body.vendorId);let state=await supplier('/vendor/overview');assert.equal(Number(state.body.products[0].stock_milli),0);assert.equal((await supplier('/state')).status,403);assert.equal((await supplier('/purchases','POST',{productId:pid,qty:5,cost:80})).status,403);let another=await admin('/vendors','POST',{name:'Other'}),foreign=await admin('/products','POST',{name:'Rice',category:'Rice & Grains',vendorId:another.body.id,opening:3,price:50});assert.equal((await supplier('/products/'+foreign.body.id,'PUT',{name:'Stolen',category:'Fruits'})).status,403);let purchase=await admin('/purchases','POST',{productId:pid,vendorId:approved.body.vendorId,qty:10,cost:'80',payment:'Part paid',paid:'300',invoice:'INV-1'});assert.equal(purchase.status,201,JSON.stringify(purchase.body));let customer=(await call('/customer/signup','POST',{name:'Customer One',email:'customer@example.com',password:'customerpass'})).body.user;let sale=await admin('/checkout','POST',{lines:[{productId:pid,qty:2}],payment:'Credit',customerId:customer.id});assert.equal(sale.status,201,JSON.stringify(sale.body));assert.equal(sale.body.received,0);state=await supplier('/vendor/overview');assert.equal(Number(state.body.products[0].stock_milli),8000);assert.equal(state.body.sales.length,1);assert.equal(state.body.sales[0].payment,'Credit');assert.equal(state.body.purchases[0].paid_paisa,30000);assert.equal(state.body.movements.filter(x=>x.kind==='sale').length,1);assert.equal(state.body.products.some(x=>x.id===foreign.body.id),false);let payment=await admin('/vendor/payments','POST',{vendorId:approved.body.vendorId,amount:'200',method:'Cash'});assert.equal(payment.status,201,JSON.stringify(payment.body));assert.equal((await admin('/vendor/payments','POST',{vendorId:approved.body.vendorId,amount:'400',method:'Cash'})).status,400);state=await supplier('/vendor/overview');assert.equal(state.body.payments.length,1);assert.equal(state.body.payments[0].amount_paisa,20000);await admin('/accounts','POST',{name:'Cashier',email:'staff@example.com',password:'staffpass',role:'staff'});let staff=(await call('/account/login','POST',{email:'staff@example.com',password:'staffpass'})).headers['set-cookie'].split(';')[0];assert.equal((await call('/vendor/applications','GET',null,staff)).status,403);assert.equal((await call('/products','POST',{name:'No'},staff)).status,403);assert.equal((await call('/adjustments','POST',{productId:pid,change:-1,reason:'Damaged',note:'No'},staff)).status,403);let staffState=await call('/state','GET',null,staff);assert.equal(staffState.body.products[0].cost_paisa,undefined);assert.equal(staffState.body.purchases.length,0);assert.equal((await call('/checkout','POST',{lines:[{productId:pid,qty:1}],payment:'Cash'},staff)).status,201)}finally{await close();await rm(dir,{recursive:true,force:true})}});
+import { Readable } from 'node:stream';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { handle } from '../server/api.mjs';
+import { close } from '../server/db.mjs';
+async function call(path, method = 'GET', payload, cookie = '') {
+  let raw = payload ? Buffer.from(JSON.stringify(payload)) : Buffer.alloc(0),
+    req = Readable.from(raw.length ? [raw] : []);
+  req.url = '/api' + path;
+  req.method = method;
+  req.headers = { cookie, host: 'localhost:8787' };
+  let status,
+    headers,
+    output = '';
+  let res = {
+    writeHead(s, h) {
+      status = s;
+      headers = h;
+    },
+    end(x) {
+      output += x || '';
+    },
+  };
+  await handle(req, res);
+  return { status, headers, body: JSON.parse(output) };
+}
+test('vendor application, approval, own catalog, sales, supplier credit and staff limits', async () => {
+  let dir = await mkdtemp(join(tmpdir(), 'star-vendor-'));
+  process.env.STAR_MART_DATA_DIR = dir;
+  try {
+    let a = await call('/vendor/apply', 'POST', {
+      business: 'Green Farm',
+      contact: 'Ali',
+      email: 'ali@example.com',
+      phone: '03001234567',
+      password: 'vendorpass',
+    });
+    assert.equal(a.status, 201, JSON.stringify(a.body));
+    await call('/setup', 'POST', { name: 'Owner', password: 'ownerpass1' });
+    let owner = (await call('/login', 'POST', { password: 'ownerpass1' })).headers['set-cookie'].split(
+        ';'
+      )[0],
+      admin = (path, method = 'GET', body) => call(path, method, body, owner);
+    let applications = await admin('/vendor/applications');
+    assert.equal(applications.body.applications.length, 1);
+    let approved = await admin('/vendor/applications/' + a.body.id + '/approve', 'POST');
+    assert.equal(approved.status, 201, JSON.stringify(approved.body));
+    let vendor = (
+        await call('/account/login', 'POST', { email: 'ali@example.com', password: 'vendorpass' })
+      ).headers['set-cookie'].split(';')[0],
+      supplier = (path, method = 'GET', body) => call(path, method, body, vendor);
+    let before = (await call('/live/version')).body.version;
+    let p = await supplier('/products', 'POST', {
+      name: 'Oranges',
+      category: 'Fruits',
+      sku: 'ORG-1',
+      vendorId: 'bad',
+      opening: 999,
+      price: '120',
+      cost: '80',
+    });
+    assert.equal(p.status, 201, JSON.stringify(p.body));
+    assert.notEqual((await call('/live/version')).body.version, before);
+    let pid = p.body.id;
+    assert.equal(p.body.vendor_id, approved.body.vendorId);
+    let state = await supplier('/vendor/overview');
+    assert.equal(Number(state.body.products[0].stock_milli), 0);
+    assert.equal((await supplier('/state')).status, 403);
+    assert.equal(
+      (await supplier('/purchases', 'POST', { productId: pid, qty: 5, cost: 80 })).status,
+      403
+    );
+    let another = await admin('/vendors', 'POST', { name: 'Other' }),
+      foreign = await admin('/products', 'POST', {
+        name: 'Rice',
+        category: 'Rice & Grains',
+        vendorId: another.body.id,
+        opening: 3,
+        price: 50,
+      });
+    assert.equal(
+      (
+        await supplier('/products/' + foreign.body.id, 'PUT', {
+          name: 'Stolen',
+          category: 'Fruits',
+        })
+      ).status,
+      403
+    );
+    let purchase = await admin('/purchases', 'POST', {
+      productId: pid,
+      vendorId: approved.body.vendorId,
+      qty: 10,
+      cost: '80',
+      payment: 'Part paid',
+      paid: '300',
+      invoice: 'INV-1',
+    });
+    assert.equal(purchase.status, 201, JSON.stringify(purchase.body));
+    let customer = (
+      await call('/customer/signup', 'POST', {
+        name: 'Customer One',
+        email: 'customer@example.com',
+        password: 'customerpass',
+      })
+    ).body.user;
+    let sale = await admin('/checkout', 'POST', {
+      lines: [{ productId: pid, qty: 2 }],
+      payment: 'Credit',
+      customerId: customer.id,
+    });
+    assert.equal(sale.status, 201, JSON.stringify(sale.body));
+    assert.equal(sale.body.received, 0);
+    state = await supplier('/vendor/overview');
+    assert.equal(Number(state.body.products[0].stock_milli), 8000);
+    assert.equal(state.body.sales.length, 1);
+    assert.equal(state.body.sales[0].payment, 'Credit');
+    assert.equal(state.body.purchases[0].paid_paisa, 30000);
+    assert.equal(state.body.movements.filter(x => x.kind === 'sale').length, 1);
+    assert.equal(
+      state.body.products.some(x => x.id === foreign.body.id),
+      false
+    );
+    let payment = await admin('/vendor/payments', 'POST', {
+      vendorId: approved.body.vendorId,
+      amount: '200',
+      method: 'Cash',
+    });
+    assert.equal(payment.status, 201, JSON.stringify(payment.body));
+    assert.equal(
+      (
+        await admin('/vendor/payments', 'POST', {
+          vendorId: approved.body.vendorId,
+          amount: '400',
+          method: 'Cash',
+        })
+      ).status,
+      400
+    );
+    state = await supplier('/vendor/overview');
+    assert.equal(state.body.payments.length, 1);
+    assert.equal(state.body.payments[0].amount_paisa, 20000);
+    await admin('/accounts', 'POST', {
+      name: 'Cashier',
+      email: 'staff@example.com',
+      password: 'staffpass',
+      role: 'staff',
+    });
+    let staff = (
+      await call('/account/login', 'POST', { email: 'staff@example.com', password: 'staffpass' })
+    ).headers['set-cookie'].split(';')[0];
+    assert.equal((await call('/vendor/applications', 'GET', null, staff)).status, 403);
+    assert.equal((await call('/products', 'POST', { name: 'No' }, staff)).status, 403);
+    assert.equal(
+      (
+        await call(
+          '/adjustments',
+          'POST',
+          { productId: pid, change: -1, reason: 'Damaged', note: 'No' },
+          staff
+        )
+      ).status,
+      403
+    );
+    let staffState = await call('/state', 'GET', null, staff);
+    assert.equal(staffState.body.products[0].cost_paisa, undefined);
+    assert.equal(staffState.body.purchases.length, 0);
+    assert.equal(
+      (
+        await call(
+          '/checkout',
+          'POST',
+          { lines: [{ productId: pid, qty: 1 }], payment: 'Cash' },
+          staff
+        )
+      ).status,
+      201
+    );
+  } finally {
+    await close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

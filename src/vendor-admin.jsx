@@ -1,34 +1,538 @@
-import React,{useEffect,useState} from 'react';
-import {CheckCircle2,Search,Store,Mail,Phone,MapPin,UserRound,X} from 'lucide-react';
-import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, Search, Store, Mail, Phone, MapPin, UserRound, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import './vendor.css';
 import './vendor-admin.css';
-const money=n=>'Rs '+(Number(n||0)/100).toLocaleString('en-PK',{maximumFractionDigits:2});
-const amount=p=>Math.round(Number(p.qty_milli)*Number(p.unit_cost_paisa)/1000);
-async function call(path,method='GET',body){let r=await fetch('/api'+path,{method,credentials:'same-origin',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined}),j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
-export default function VendorManagement({vendors,purchases,products=[],sales=[],accounts=[],onApproved,onEditVendor,renderCatalog}){
- const [requests,setRequests]=useState([]),[payments,setPayments]=useState([]),[returns,setReturns]=useState([]),[selected,setSelected]=useState(''),[tab,setTab]=useState('details'),[search,setSearch]=useState(''),[review,setReview]=useState(false),[success,setSuccess]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[form,setForm]=useState({method:'Cash'}),[returnForm,setReturnForm]=useState({});
- async function load(){let [a,p,r]=await Promise.all([call('/vendor/applications'),call('/vendor/payments'),call('/vendor/returns')]);setRequests(a.applications);setPayments(p.payments);setReturns(r.returns)}
- useEffect(()=>{load().catch(e=>setError(e.message))},[]);
- const vendor=vendors.find(v=>v.id===selected),pending=requests.filter(a=>a.status==='Pending'),own=purchases.filter(p=>p.vendor_id===selected),paid=payments.filter(p=>p.vendor_id===selected),credits=returns.filter(r=>r.vendor_id===selected),catalog=products.filter(p=>p.vendor_id===selected),productIds=new Set(catalog.map(p=>p.id)),sold=sales.filter(s=>productIds.has(s.product_id));
- const received=own.reduce((n,p)=>n+amount(p),0),atReceipt=own.reduce((n,p)=>n+(p.payment==='Paid'?amount(p):Number(p.paid_paisa||0)),0),later=paid.reduce((n,p)=>n+Number(p.amount_paisa),0),returned=credits.reduce((n,p)=>n+Number(p.amount_paisa),0),balance=received-atReceipt-later-returned;
- function choose(id){setSelected(id);setTab('details');setError('');setForm({method:'Cash'});setReturnForm({})}
- async function approve(a){setBusy(true);setError('');try{let r=await call('/vendor/applications/'+a.id+'/approve','POST',{});await onApproved();await load();setReview(false);choose(r.vendorId);setSuccess({name:a.business,email:r.email})}catch(e){setError(e.message)}finally{setBusy(false)}}
- async function reject(a){setBusy(true);setError('');try{await call('/vendor/applications/'+a.id+'/reject','POST',{});await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
- async function record(e){e.preventDefault();setBusy(true);setError('');try{await call('/vendor/payments','POST',{...form,vendorId:selected});setForm({method:'Cash'});await load();await onApproved()}catch(e){setError(e.message)}finally{setBusy(false)}}
- async function recordReturn(e){e.preventDefault();setBusy(true);setError('');try{if(!own.some(p=>p.id===returnForm.purchaseId))throw Error('Choose a receipt for this vendor.');await call('/vendor/returns','POST',returnForm);setReturnForm({});await load();await onApproved()}catch(e){setError(e.message)}finally{setBusy(false)}}
- const tabs=[['details','Details'],['products','Products'],['purchases','Purchases'],['sales','Sales'],['payments','Payments & credit'],['returns','Returns']];
- return <div className="vh"><div className="vh-toolbar"><div><Store size={23}/><strong>Vendor workspace</strong></div><label><Search size={17}/><input placeholder="Find vendor by name or email" value={search} onChange={e=>setSearch(e.target.value)}/></label><select aria-label="Select vendor" value={selected} onChange={e=>choose(e.target.value)}><option value="">Select a vendor</option>{vendors.filter(v=>(v.name+' '+v.email).toLowerCase().includes(search.toLowerCase())).map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select><button className="primary" onClick={()=>{setReview(true);setError('')}}>Applications <b>{pending.length}</b></button></div>
- {error&&!review&&<p className="vh-error" role="alert">{error}</p>}
- {!vendor?<section className="vh-empty"><Store size={42}/><h2>Choose a vendor to get started</h2><p>All their details, products, purchases and payments appear together here.</p></section>:<><section className="vh-profile"><div className="vh-avatar"><Store size={27}/></div><div><h2>{vendor.name}</h2><p>{vendor.contact||'Supplier'} · {vendor.email||'No email added'}</p></div><button className="quiet" onClick={()=>onEditVendor(vendor)}>Edit details</button></section><nav className="vh-tabs" aria-label="Vendor sections">{tabs.map(([id,label])=><button key={id} className={tab===id?'active':''} onClick={()=>{setTab(id);setError('')}}>{label}</button>)}</nav>
- {tab==='details'&&<section className="vh-card"><h3>Business & account details</h3><div className="vh-details">{[[Store,'Business name',vendor.name],[UserRound,'Contact person',vendor.contact],[Mail,'Email',vendor.email],[Phone,'Phone',vendor.phone],[MapPin,'Address',vendor.address],[Store,'Payment terms',vendor.terms],[Store,'Tax ID',vendor.tax_id],[Mail,'Portal login email',accounts.find(a=>a.vendor_id===selected)?.email],[UserRound,'Portal access',accounts.some(a=>a.vendor_id===selected&&a.active)?'Active vendor account':'No active portal account']].map(([Icon,label,value])=><div key={label}><Icon size={19}/><div><small>{label}</small><strong>{value||'Not added'}</strong></div></div>)}</div><div className="vh-summary">{[['Products',catalog.filter(p=>!p.deleted_at).length],['Stock received',money(received)],['Payments & credits',money(atReceipt+later+returned)],['Outstanding balance',money(balance)]].map(([label,value])=><div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div></section>}
- {tab==='products'&&renderCatalog(vendor)}
- {tab==='purchases'&&<Table headings={['Date / invoice','Product','Quantity','Cost','Paid','Payment']} rows={own.map(p=>[new Date(p.created_at).toLocaleDateString('en-PK')+' · '+(p.invoice||'No invoice'),products.find(x=>x.id===p.product_id)?.name||'Historical product',Math.round(Number(p.qty_milli)/1000),money(amount(p)),money(p.payment==='Paid'?amount(p):p.paid_paisa),p.payment])}/>}
- {tab==='sales'&&<><p className="vh-note">Customer sales of this vendor’s products. Supplier payments are recorded separately.</p><Table headings={['Date / receipt','Product','Quantity','Payment','Unit sale price','Sales value']} rows={sold.map(s=>[new Date(s.created_at).toLocaleDateString('en-PK')+' · '+s.receipt,products.find(p=>p.id===s.product_id)?.name||'Historical product',Math.round(Number(s.qty_milli)/1000),s.payment,money(s.unit_price_paisa),money(s.line_total_paisa)])}/></>}
- {tab==='payments'&&<section className="vh-card"><div className="vh-summary">{[['Received stock',money(received)],['Paid at receipt',money(atReceipt)],['Later payments',money(later)],['Return credits',money(returned)],['Balance due',money(balance)]].map(([label,value])=><div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div><h3>Record payment to {vendor.name}</h3><form className="vh-form" onSubmit={record}><label>Amount (Rs)<input type="number" min="0.01" step="0.01" required value={form.amount||''} onChange={e=>setForm({...form,amount:e.target.value})}/></label><label>Method<select value={form.method} onChange={e=>setForm({...form,method:e.target.value})}>{['Cash','Bank transfer','Card'].map(m=><option key={m}>{m}</option>)}</select></label><label>Reference<input value={form.reference||''} onChange={e=>setForm({...form,reference:e.target.value})}/></label><button className="primary" disabled={busy||balance<=0}>Record payment</button></form><Table headings={['Date','Method','Reference','Amount']} rows={paid.map(p=>[new Date(p.created_at).toLocaleDateString('en-PK'),p.method,p.reference||'—',money(p.amount_paisa)])}/></section>}
- {tab==='returns'&&<section className="vh-card"><h3>Return stock to {vendor.name}</h3><p className="vh-note">Available, unreserved stock only. Credit uses the original receipt cost.</p><form className="vh-form" onSubmit={recordReturn}><label>Stock receipt<select required value={returnForm.purchaseId||''} onChange={e=>setReturnForm({...returnForm,purchaseId:e.target.value})}><option value="">Choose this vendor’s receipt</option>{own.map(p=><option key={p.id} value={p.id}>{p.invoice||p.id} · {products.find(x=>x.id===p.product_id)?.name}</option>)}</select></label><label>Quantity<input required type="number" min="1" step="1" value={returnForm.qty||''} onChange={e=>setReturnForm({...returnForm,qty:e.target.value})}/></label><label>Reason<input required value={returnForm.reason||''} onChange={e=>setReturnForm({...returnForm,reason:e.target.value})}/></label><label>Credit reference<input value={returnForm.reference||''} onChange={e=>setReturnForm({...returnForm,reference:e.target.value})}/></label><button className="primary" disabled={busy||!own.length}>Record return & credit</button></form><Table headings={['Date','Product','Quantity','Reason','Credit']} rows={credits.map(r=>[new Date(r.created_at).toLocaleDateString('en-PK'),products.find(p=>p.id===r.product_id)?.name||'Historical product',Math.round(Number(r.qty_milli)/1000),r.reason,money(r.amount_paisa)])}/></section>}</>}
- <Dialog open={review} onOpenChange={v=>{if(!busy)setReview(v)}}><DialogContent className="vh-dialog"><DialogTitle>Vendor applications</DialogTitle><DialogDescription>Review business details. Vendors choose their own passwords; approval activates their account.</DialogDescription>{error&&<p className="vh-error" role="alert">{error}</p>}{!pending.length&&<p>No pending applications.</p>}{pending.map(a=><article className="vh-application" key={a.id}><h3>{a.business}</h3><dl>{[['Contact',a.contact],['Email',a.email],['Phone',a.phone],['Address',a.address],['Products supplied',a.note]].map(([k,v])=><React.Fragment key={k}><dt>{k}</dt><dd>{v||'Not added'}</dd></React.Fragment>)}</dl>{!a.password_ready&&<p className="vh-error">Older request: reject this application and ask the vendor to reapply with their own password.</p>}<div><button className="primary" disabled={busy||!a.password_ready} onClick={()=>approve(a)}>Approve vendor</button><button className="quiet" disabled={busy} onClick={()=>reject(a)}>Reject</button></div></article>)}</DialogContent></Dialog>
- <Dialog open={Boolean(success)} onOpenChange={v=>{if(!v)setSuccess(null)}}><DialogContent className="vh-success"><CheckCircle2 size={54}/><DialogTitle>Vendor approved successfully</DialogTitle><DialogDescription><strong>{success?.name}</strong> is ready to supply Star Mart. They can sign in at /vendor with <strong>{success?.email}</strong> and their own password.</DialogDescription><button className="primary" onClick={()=>setSuccess(null)}>Open vendor workspace</button></DialogContent></Dialog>
- </div>
+const money = n =>
+  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+const amount = p => Math.round((Number(p.qty_milli) * Number(p.unit_cost_paisa)) / 1000);
+async function call(path, method = 'GET', body) {
+  let r = await fetch('/api' + path, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+    j = await r.json();
+  if (!r.ok) throw Error(j.error || 'Request failed');
+  return j;
 }
-function Table({headings,rows}){return <div className="vh-table"><table><thead><tr>{headings.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((v,j)=><td key={j}>{v}</td>)}</tr>)}</tbody></table>{!rows.length&&<p>No records for this vendor yet.</p>}</div>}
+export default function VendorManagement({
+  vendors,
+  purchases,
+  products = [],
+  sales = [],
+  accounts = [],
+  onApproved,
+  onEditVendor,
+  renderCatalog,
+}) {
+  const [requests, setRequests] = useState([]),
+    [payments, setPayments] = useState([]),
+    [returns, setReturns] = useState([]),
+    [selected, setSelected] = useState(''),
+    [tab, setTab] = useState('details'),
+    [search, setSearch] = useState(''),
+    [review, setReview] = useState(false),
+    [success, setSuccess] = useState(null),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState(false),
+    [form, setForm] = useState({ method: 'Cash' }),
+    [returnForm, setReturnForm] = useState({});
+  async function load() {
+    let [a, p, r] = await Promise.all([
+      call('/vendor/applications'),
+      call('/vendor/payments'),
+      call('/vendor/returns'),
+    ]);
+    setRequests(a.applications);
+    setPayments(p.payments);
+    setReturns(r.returns);
+  }
+  useEffect(() => {
+    load().catch(e => setError(e.message));
+  }, []);
+  const vendor = vendors.find(v => v.id === selected),
+    pending = requests.filter(a => a.status === 'Pending'),
+    own = purchases.filter(p => p.vendor_id === selected),
+    paid = payments.filter(p => p.vendor_id === selected),
+    credits = returns.filter(r => r.vendor_id === selected),
+    catalog = products.filter(p => p.vendor_id === selected),
+    productIds = new Set(catalog.map(p => p.id)),
+    sold = sales.filter(s => productIds.has(s.product_id));
+  const received = own.reduce((n, p) => n + amount(p), 0),
+    atReceipt = own.reduce(
+      (n, p) => n + (p.payment === 'Paid' ? amount(p) : Number(p.paid_paisa || 0)),
+      0
+    ),
+    later = paid.reduce((n, p) => n + Number(p.amount_paisa), 0),
+    returned = credits.reduce((n, p) => n + Number(p.amount_paisa), 0),
+    balance = received - atReceipt - later - returned;
+  function choose(id) {
+    setSelected(id);
+    setTab('details');
+    setError('');
+    setForm({ method: 'Cash' });
+    setReturnForm({});
+  }
+  async function approve(a) {
+    setBusy(true);
+    setError('');
+    try {
+      let r = await call('/vendor/applications/' + a.id + '/approve', 'POST', {});
+      await onApproved();
+      await load();
+      setReview(false);
+      choose(r.vendorId);
+      setSuccess({ name: a.business, email: r.email });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function reject(a) {
+    setBusy(true);
+    setError('');
+    try {
+      await call('/vendor/applications/' + a.id + '/reject', 'POST', {});
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function record(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await call('/vendor/payments', 'POST', { ...form, vendorId: selected });
+      setForm({ method: 'Cash' });
+      await load();
+      await onApproved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function recordReturn(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      if (!own.some(p => p.id === returnForm.purchaseId))
+        throw Error('Choose a receipt for this vendor.');
+      await call('/vendor/returns', 'POST', returnForm);
+      setReturnForm({});
+      await load();
+      await onApproved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const tabs = [
+    ['details', 'Details'],
+    ['products', 'Products'],
+    ['purchases', 'Purchases'],
+    ['sales', 'Sales'],
+    ['payments', 'Payments & credit'],
+    ['returns', 'Returns'],
+  ];
+  return (
+    <div className="vh">
+      <div className="vh-toolbar">
+        <div>
+          <Store size={23} />
+          <strong>Vendor workspace</strong>
+        </div>
+        <label>
+          <Search size={17} />
+          <input
+            placeholder="Find vendor by name or email"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </label>
+        <select aria-label="Select vendor" value={selected} onChange={e => choose(e.target.value)}>
+          <option value="">Select a vendor</option>
+          {vendors
+            .filter(v => (v.name + ' ' + v.email).toLowerCase().includes(search.toLowerCase()))
+            .map(v => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+        </select>
+        <button
+          className="primary"
+          onClick={() => {
+            setReview(true);
+            setError('');
+          }}
+        >
+          Applications <b>{pending.length}</b>
+        </button>
+      </div>
+      {error && !review && (
+        <p className="vh-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!vendor ? (
+        <section className="vh-empty">
+          <Store size={42} />
+          <h2>Choose a vendor to get started</h2>
+          <p>All their details, products, purchases and payments appear together here.</p>
+        </section>
+      ) : (
+        <>
+          <section className="vh-profile">
+            <div className="vh-avatar">
+              <Store size={27} />
+            </div>
+            <div>
+              <h2>{vendor.name}</h2>
+              <p>
+                {vendor.contact || 'Supplier'} · {vendor.email || 'No email added'}
+              </p>
+            </div>
+            <button className="quiet" onClick={() => onEditVendor(vendor)}>
+              Edit details
+            </button>
+          </section>
+          <nav className="vh-tabs" aria-label="Vendor sections">
+            {tabs.map(([id, label]) => (
+              <button
+                key={id}
+                className={tab === id ? 'active' : ''}
+                onClick={() => {
+                  setTab(id);
+                  setError('');
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          {tab === 'details' && (
+            <section className="vh-card">
+              <h3>Business & account details</h3>
+              <div className="vh-details">
+                {[
+                  [Store, 'Business name', vendor.name],
+                  [UserRound, 'Contact person', vendor.contact],
+                  [Mail, 'Email', vendor.email],
+                  [Phone, 'Phone', vendor.phone],
+                  [MapPin, 'Address', vendor.address],
+                  [Store, 'Payment terms', vendor.terms],
+                  [Store, 'Tax ID', vendor.tax_id],
+                  [Mail, 'Portal login email', accounts.find(a => a.vendor_id === selected)?.email],
+                  [
+                    UserRound,
+                    'Portal access',
+                    accounts.some(a => a.vendor_id === selected && a.active)
+                      ? 'Active vendor account'
+                      : 'No active portal account',
+                  ],
+                ].map(([Icon, label, value]) => (
+                  <div key={label}>
+                    <Icon size={19} />
+                    <div>
+                      <small>{label}</small>
+                      <strong>{value || 'Not added'}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="vh-summary">
+                {[
+                  ['Products', catalog.filter(p => !p.deleted_at).length],
+                  ['Stock received', money(received)],
+                  ['Payments & credits', money(atReceipt + later + returned)],
+                  ['Outstanding balance', money(balance)],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <small>{label}</small>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {tab === 'products' && renderCatalog(vendor)}
+          {tab === 'purchases' && (
+            <Table
+              headings={['Date / invoice', 'Product', 'Quantity', 'Cost', 'Paid', 'Payment']}
+              rows={own.map(p => [
+                new Date(p.created_at).toLocaleDateString('en-PK') +
+                  ' · ' +
+                  (p.invoice || 'No invoice'),
+                products.find(x => x.id === p.product_id)?.name || 'Historical product',
+                Math.round(Number(p.qty_milli) / 1000),
+                money(amount(p)),
+                money(p.payment === 'Paid' ? amount(p) : p.paid_paisa),
+                p.payment,
+              ])}
+            />
+          )}
+          {tab === 'sales' && (
+            <>
+              <p className="vh-note">
+                Customer sales of this vendor’s products. Supplier payments are recorded separately.
+              </p>
+              <Table
+                headings={[
+                  'Date / receipt',
+                  'Product',
+                  'Quantity',
+                  'Payment',
+                  'Unit sale price',
+                  'Sales value',
+                ]}
+                rows={sold.map(s => [
+                  new Date(s.created_at).toLocaleDateString('en-PK') + ' · ' + s.receipt,
+                  products.find(p => p.id === s.product_id)?.name || 'Historical product',
+                  Math.round(Number(s.qty_milli) / 1000),
+                  s.payment,
+                  money(s.unit_price_paisa),
+                  money(s.line_total_paisa),
+                ])}
+              />
+            </>
+          )}
+          {tab === 'payments' && (
+            <section className="vh-card">
+              <div className="vh-summary">
+                {[
+                  ['Received stock', money(received)],
+                  ['Paid at receipt', money(atReceipt)],
+                  ['Later payments', money(later)],
+                  ['Return credits', money(returned)],
+                  ['Balance due', money(balance)],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <small>{label}</small>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <h3>Record payment to {vendor.name}</h3>
+              <form className="vh-form" onSubmit={record}>
+                <label>
+                  Amount (Rs)
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    value={form.amount || ''}
+                    onChange={e => setForm({ ...form, amount: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Method
+                  <select
+                    value={form.method}
+                    onChange={e => setForm({ ...form, method: e.target.value })}
+                  >
+                    {['Cash', 'Bank transfer', 'Card'].map(m => (
+                      <option key={m}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Reference
+                  <input
+                    value={form.reference || ''}
+                    onChange={e => setForm({ ...form, reference: e.target.value })}
+                  />
+                </label>
+                <button className="primary" disabled={busy || balance <= 0}>
+                  Record payment
+                </button>
+              </form>
+              <Table
+                headings={['Date', 'Method', 'Reference', 'Amount']}
+                rows={paid.map(p => [
+                  new Date(p.created_at).toLocaleDateString('en-PK'),
+                  p.method,
+                  p.reference || '—',
+                  money(p.amount_paisa),
+                ])}
+              />
+            </section>
+          )}
+          {tab === 'returns' && (
+            <section className="vh-card">
+              <h3>Return stock to {vendor.name}</h3>
+              <p className="vh-note">
+                Available, unreserved stock only. Credit uses the original receipt cost.
+              </p>
+              <form className="vh-form" onSubmit={recordReturn}>
+                <label>
+                  Stock receipt
+                  <select
+                    required
+                    value={returnForm.purchaseId || ''}
+                    onChange={e => setReturnForm({ ...returnForm, purchaseId: e.target.value })}
+                  >
+                    <option value="">Choose this vendor’s receipt</option>
+                    {own.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.invoice || p.id} · {products.find(x => x.id === p.product_id)?.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Quantity
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={returnForm.qty || ''}
+                    onChange={e => setReturnForm({ ...returnForm, qty: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Reason
+                  <input
+                    required
+                    value={returnForm.reason || ''}
+                    onChange={e => setReturnForm({ ...returnForm, reason: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Credit reference
+                  <input
+                    value={returnForm.reference || ''}
+                    onChange={e => setReturnForm({ ...returnForm, reference: e.target.value })}
+                  />
+                </label>
+                <button className="primary" disabled={busy || !own.length}>
+                  Record return & credit
+                </button>
+              </form>
+              <Table
+                headings={['Date', 'Product', 'Quantity', 'Reason', 'Credit']}
+                rows={credits.map(r => [
+                  new Date(r.created_at).toLocaleDateString('en-PK'),
+                  products.find(p => p.id === r.product_id)?.name || 'Historical product',
+                  Math.round(Number(r.qty_milli) / 1000),
+                  r.reason,
+                  money(r.amount_paisa),
+                ])}
+              />
+            </section>
+          )}
+        </>
+      )}
+      <Dialog
+        open={review}
+        onOpenChange={v => {
+          if (!busy) setReview(v);
+        }}
+      >
+        <DialogContent className="vh-dialog">
+          <DialogTitle>Vendor applications</DialogTitle>
+          <DialogDescription>
+            Review business details. Vendors choose their own passwords; approval activates their
+            account.
+          </DialogDescription>
+          {error && (
+            <p className="vh-error" role="alert">
+              {error}
+            </p>
+          )}
+          {!pending.length && <p>No pending applications.</p>}
+          {pending.map(a => (
+            <article className="vh-application" key={a.id}>
+              <h3>{a.business}</h3>
+              <dl>
+                {[
+                  ['Contact', a.contact],
+                  ['Email', a.email],
+                  ['Phone', a.phone],
+                  ['Address', a.address],
+                  ['Products supplied', a.note],
+                ].map(([k, v]) => (
+                  <React.Fragment key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v || 'Not added'}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+              {!a.password_ready && (
+                <p className="vh-error">
+                  Older request: reject this application and ask the vendor to reapply with their
+                  own password.
+                </p>
+              )}
+              <div>
+                <button
+                  className="primary"
+                  disabled={busy || !a.password_ready}
+                  onClick={() => approve(a)}
+                >
+                  Approve vendor
+                </button>
+                <button className="quiet" disabled={busy} onClick={() => reject(a)}>
+                  Reject
+                </button>
+              </div>
+            </article>
+          ))}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(success)}
+        onOpenChange={v => {
+          if (!v) setSuccess(null);
+        }}
+      >
+        <DialogContent className="vh-success">
+          <CheckCircle2 size={54} />
+          <DialogTitle>Vendor approved successfully</DialogTitle>
+          <DialogDescription>
+            <strong>{success?.name}</strong> is ready to supply Star Mart. They can sign in at
+            /vendor with <strong>{success?.email}</strong> and their own password.
+          </DialogDescription>
+          <button className="primary" onClick={() => setSuccess(null)}>
+            Open vendor workspace
+          </button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+function Table({ headings, rows }) {
+  return (
+    <div className="vh-table">
+      <table>
+        <thead>
+          <tr>
+            {headings.map(h => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((v, j) => (
+                <td key={j}>{v}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!rows.length && <p>No records for this vendor yet.</p>}
+    </div>
+  );
+}
