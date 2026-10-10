@@ -3,17 +3,9 @@ import { Button } from '@/components/ui/button';
 import React, { useEffect, useState } from 'react';
 import { KeyRound, ShieldCheck, ArrowLeft, Copy } from 'lucide-react';
 import './account-security.css';
-async function call(path, body) {
-  const r = await fetch('/api' + path, {
-    method: body ? 'POST' : 'GET',
-    credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const j = await r.json();
-  if (!r.ok) throw Error(j.error || 'Unable to continue');
-  return j;
-}
+import { get, post, seg } from './lib/api.js';
+import { formatDateTime } from './lib/money.js';
+const call = (path, body) => (body ? post(path, body) : get(path));
 export function PasswordChange({ kind = 'customer' }) {
   const [open, setOpen] = useState(false),
     [current, setCurrent] = useState(''),
@@ -90,7 +82,11 @@ export function PasswordChange({ kind = 'customer' }) {
   );
 }
 export function PasswordHelp() {
-  const token = new URLSearchParams(location.search).get('token'),
+  // The reset token is read from the URL fragment (never sent to the server or leaked in Referer headers);
+  // the query form is still accepted for links issued before this change.
+  const token =
+      new URLSearchParams(location.hash.replace(/^#/, '')).get('token') ||
+      new URLSearchParams(location.search).get('token'),
     initial = new URLSearchParams(location.search).get('kind') || 'customer';
   const [kind, setKind] = useState(initial),
     [email, setEmail] = useState(''),
@@ -232,7 +228,7 @@ export function RecoveryQueue() {
     setBusy(true);
     setError('');
     try {
-      const x = await call('/admin/password-requests/' + r.id + '/issue', {});
+      const x = await call('/admin/password-requests/' + seg(r.id) + '/issue', {});
       setLink({ ...x, url: location.origin + x.path });
       setSelected(null);
       setVerified(false);
@@ -286,8 +282,7 @@ export function RecoveryQueue() {
           <span>
             <b>{r.email}</b>
             <small>
-              {r.kind} ·{' '}
-              {new Date(r.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}
+              {r.kind} · {formatDateTime(r.created_at)}
             </small>
           </span>
           <button

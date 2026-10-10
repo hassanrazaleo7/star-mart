@@ -5,7 +5,8 @@ export function fixed(value, scale, label, { min = 0, zero = true } = {}) {
   if (!/^\d+(?:\.\d+)?$/.test(s)) throw fail(label + ' must be a valid number');
   let [whole, decimal = ''] = s.split('.'),
     digits = String(scale).length - 1;
-  if (decimal.length > digits) throw fail(label + ' supports at most ' + digits + ' decimal places');
+  if (decimal.length > digits)
+    throw fail(label + ' supports at most ' + digits + ' decimal places');
   let n = Number(whole) * scale + Number(decimal.padEnd(digits, '0'));
   if (!Number.isSafeInteger(n) || n > 1_000_000_000_000 || n < min || (!zero && n === 0))
     throw fail(label + ' is outside the allowed range');

@@ -26,7 +26,7 @@ export async function state(user, { from } = {}) {
   if (user.role === 'staff')
     return {
       products: products.map(
-        ({ cost_paisa, tax_rate_bps, vendor_proposed_price_paisa, ...x }) => x
+        ({ cost_paisa: _c, tax_rate_bps: _t, vendor_proposed_price_paisa: _p, ...x }) => x
       ),
       vendors: [],
       purchases: [],
@@ -46,7 +46,9 @@ export async function state(user, { from } = {}) {
       window('SELECT * FROM receipts WHERE created_at>=$1 ORDER BY created_at DESC LIMIT $2'),
       window('SELECT * FROM adjustments WHERE created_at>=$1 ORDER BY created_at DESC LIMIT $2'),
       window('SELECT * FROM expenses WHERE created_at>=$1 ORDER BY created_at DESC LIMIT $2'),
-      window('SELECT * FROM stock_movements WHERE created_at>=$1 ORDER BY created_at DESC LIMIT $2'),
+      window(
+        'SELECT * FROM stock_movements WHERE created_at>=$1 ORDER BY created_at DESC LIMIT $2'
+      ),
       d.query('SELECT COALESCE(SUM(total_paisa),0) total FROM receipts WHERE created_at>=$1', [
         localDayStart(localDate()).toISOString(),
       ]),
@@ -76,10 +78,11 @@ export async function reportRange(from, to) {
   const d = await db(),
     range = [lo, hi],
     day = `TO_CHAR(created_at+($3::text||' minutes')::interval,'YYYY-MM-DD')`,
+    // "day" is an interval keyword in PostgreSQL, so the alias needs an explicit AS.
     withTz = [lo, hi, String(TIMEZONE_OFFSET_MINUTES)];
   const [days, payments, products, categories, totals, purchases, expenses] = await Promise.all([
     d.query(
-      `SELECT ${day} day,COUNT(*)::int bills,SUM(total_paisa) total_paisa,SUM(discount_paisa) discount_paisa FROM receipts WHERE created_at>=$1 AND created_at<$2 GROUP BY 1 ORDER BY 1`,
+      `SELECT ${day} AS day,COUNT(*)::int bills,SUM(total_paisa) total_paisa,SUM(discount_paisa) discount_paisa FROM receipts WHERE created_at>=$1 AND created_at<$2 GROUP BY 1 ORDER BY 1`,
       withTz
     ),
     d.query(

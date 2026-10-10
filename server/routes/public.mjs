@@ -104,7 +104,17 @@ route(
       return (
         await c.query(
           'INSERT INTO vendor_applications(id,business,contact,email,phone,address,note,password_hash,salt) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,status',
-          [id(), business, contact, email, phone, str(b.address, 500), str(b.note, 1000), passwordHash, salt]
+          [
+            id(),
+            business,
+            contact,
+            email,
+            phone,
+            str(b.address, 500),
+            str(b.note, 1000),
+            passwordHash,
+            salt,
+          ]
         )
       ).rows[0];
     });
@@ -248,11 +258,10 @@ route(
             [customerId, identity.name, email, identity.phone, randomHash, id()]
           )
         ).rows[0];
-        await c.query('INSERT INTO customer_identities(uid,customer_id,provider) VALUES($1,$2,$3)', [
-          identity.id,
-          customerId,
-          provider,
-        ]);
+        await c.query(
+          'INSERT INTO customer_identities(uid,customer_id,provider) VALUES($1,$2,$3)',
+          [identity.id, customerId, provider]
+        );
       }
       return { customer: account, token: await openSession('customer', account.id, c) };
     });
@@ -341,10 +350,7 @@ route(
   {
     auth: 'public',
     body: 'json',
-    limit: [
-      { scope: 'owner-login' },
-      { scope: 'login-account', perAccount: true, max: 10 },
-    ],
+    limit: [{ scope: 'owner-login' }, { scope: 'login-account', perAccount: true, max: 10 }],
   },
   async ({ req, body: b }) => {
     const password = String(b.password || '');
@@ -353,7 +359,8 @@ route(
       await burnVerify(password);
       throw fail('Incorrect password', 401);
     }
-    if (!(await verifyAsync(password, u.salt, u.password_hash))) throw fail('Incorrect password', 401);
+    if (!(await verifyAsync(password, u.salt, u.password_hash)))
+      throw fail('Incorrect password', 401);
     await rehash('users', u, password);
     const token = await openSession('admin', u.id);
     return ok({ name: u.name }, 200, { 'set-cookie': cookie(token, false, req) });

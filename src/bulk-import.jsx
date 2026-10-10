@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { unzipSync, strFromU8 } from 'fflate';
+import { unzip, strFromU8 } from 'fflate';
+import { post, seg, upload } from './lib/api.js';
+import { resizeToJpeg } from './lib/image.js';
 import { UploadCloud, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import './bulk-import.css';
 function csv(text) {
@@ -30,31 +32,14 @@ function csv(text) {
   if (row.some(Boolean)) rows.push(row);
   if (!rows.length) return [];
   let headers = rows.shift().map((x, i) => (i === 0 ? x.replace(/^\uFEFF/, '') : x));
-  return rows.map((values, i) => Object.fromEntries(headers.map((h, j) => [h, values[j] || ''])));
+  return rows.map(values => Object.fromEntries(headers.map((h, j) => [h, values[j] || ''])));
 }
-async function imageBytes(bytes) {
-  if (bytes.byteLength < 900000) return bytes;
-  let image = await createImageBitmap(new Blob([bytes])),
-    scale = Math.min(1, 900 / Math.max(image.width, image.height)),
-    canvas = document.createElement('canvas');
-  canvas.width = Math.round(image.width * scale);
-  canvas.height = Math.round(image.height * scale);
-  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-  image.close();
-  let blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.78));
-  if (!blob || blob.size > 900000) throw Error('Image is too large after resizing');
-  return new Uint8Array(await blob.arrayBuffer());
-}
-async function send(path, payload) {
-  let response = await fetch('/api' + path, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    }),
-    body = await response.json();
-  if (!response.ok) throw Error(body.error || 'Import failed');
-  return body;
+// Decompress off the main thread so a 30 MB ZIP does not freeze the admin.
+const unzipAsync = data =>
+  new Promise((resolve, reject) => unzip(data, (err, out) => (err ? reject(err) : resolve(out))));
+async function imageBlob(bytes) {
+  if (bytes.byteLength < 900000) return new Blob([bytes]);
+  return resizeToJpeg(new Blob([bytes]), { quality: 0.78, limit: 900000 });
 }
 export default function BulkImport({ onImported }) {
   let [file, setFile] = useState(null),
@@ -78,7 +63,7 @@ export default function BulkImport({ onImported }) {
     try {
       if (file.size > 30_000_000)
         throw Error('ZIP must be under 30 MB. Split a larger catalog into separate ZIP files.');
-      let entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+      let entries = await unzipAsync(new Uint8Array(await file.arrayBuffer()));
       let paths = Object.keys(entries),
         find = name => paths.find(p => p === name || p.endsWith('/' + name)),
         customersPath = find('customers.csv'),
@@ -120,7 +105,7 @@ export default function BulkImport({ onImported }) {
         map = new Map();
       for (let i = 0; i < pending.length; i += 80) {
         let chunk = pending.slice(i, i + 80),
-          result = await send('/bulk/import', {
+          result = await post('/bulk/import', {
             customers: chunk.filter(x => x.kind === 'customer').map(x => x.row),
             products: chunk.filter(x => x.kind === 'product').map(x => x.row),
           });
@@ -131,6 +116,7 @@ export default function BulkImport({ onImported }) {
           'Imported ' + Math.min(i + 80, pending.length) + ' / ' + pending.length + ' rows'
         );
       }
+      let firstIssue = '';
       for (let i = 0; i < products.length; i++) {
         let product = products[i];
         if (!product.image_filename || !map.get(product.sku)?.added) continue;
@@ -138,26 +124,15 @@ export default function BulkImport({ onImported }) {
           bytes = entries[imagePath];
         try {
           if (!/\.(jpg|jpeg|png|webp)$/i.test(imagePath)) throw Error('Use JPG, PNG or WebP');
-          let image = await imageBytes(bytes),
-            response = await fetch('/api/products/' + map.get(product.sku).id + '/image', {
-              method: 'POST',
-              credentials: 'same-origin',
-              headers: { 'content-type': 'application/octet-stream' },
-              body: image,
-            });
-          if (!response.ok) {
-            let j = await response.json();
-            throw Error(j.error || 'Image upload failed');
-          }
+          await upload(
+            '/products/' + seg(map.get(product.sku).id) + '/image',
+            await imageBlob(bytes)
+          );
           tally.imagesAdded++;
         } catch (e) {
           tally.imagesFailed++;
-          setError(
-            'Some images could not upload. First issue: ' +
-              product.image_filename +
-              ' — ' +
-              e.message
-          );
+          firstIssue ||= product.image_filename + ' — ' + e.message;
+          setError('Some images could not upload. First issue: ' + firstIssue);
         }
         setProgress('Images ' + (i + 1) + ' / ' + products.length);
       }

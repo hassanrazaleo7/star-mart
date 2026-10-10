@@ -4,8 +4,6 @@ import {
   Package,
   UserRound,
   CheckCircle2,
-  Mail,
-  Phone,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -20,26 +18,11 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-export const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
-export const when = x =>
-  new Date(x).toLocaleString('en-PK', {
-    timeZone: 'Asia/Karachi',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-const quantity = n => Math.round(Number(n || 0) / 1000).toLocaleString('en-PK');
-async function request(path, method = 'GET', body) {
-  let r = await fetch('/api' + path, {
-      method,
-      credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-    j = await r.json();
-  if (!r.ok) throw Error(j.error || 'Could not complete this action');
-  return j;
-}
+import { get, seg } from './lib/api.js';
+import { formatPaisa, formatDateTime, formatQty } from './lib/money.js';
+export const money = formatPaisa;
+export const when = formatDateTime;
+const quantity = n => formatQty(n);
 export function WorkspaceTabs({ value, onChange, items, label = 'Workspace sections' }) {
   return (
     <Tabs value={value} onValueChange={onChange} className="aw-tabs">
@@ -207,17 +190,19 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
     [verified, setVerified] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const open = status => ['Pending', 'Inquiry'].includes(status);
   let filtered = orders.filter(
       o =>
         tab === 'all' ||
         (tab === 'pending' && o.status === 'Pending') ||
+        (tab === 'inquiry' && o.status === 'Inquiry') ||
         (tab === 'pickup' && o.fulfillment === 'Pickup' && o.status === 'Pending') ||
         (tab === 'delivery' && o.fulfillment === 'Delivery' && o.status === 'Pending') ||
         o.status.toLowerCase() === tab
     ),
     order = orders.find(o => o.id === selected),
     transfer = order?.payment_method?.includes('transfer');
-  function open(o) {
+  function show(o) {
     setSelected(o.id);
     setError('');
     setReference('');
@@ -235,19 +220,26 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
           : {}
       );
       if (!r) throw Error('Action could not be saved. Please check the message and try again.');
-      setSelected(null);
-      setCancel(null);
+      if (status !== 'Extend') {
+        setSelected(null);
+        setCancel(null);
+      }
     } catch (e) {
       setError(e.message);
     } finally {
       setBusy(false);
     }
   }
+  const holdLabel = o =>
+    o.expires_at
+      ? (o.status === 'Inquiry' ? 'Inquiry expires ' : 'Stock held until ') + when(o.expires_at)
+      : '';
   return (
     <>
       <Summary
         items={[
           ['Awaiting action', orders.filter(o => o.status === 'Pending').length],
+          ['WhatsApp inquiries', orders.filter(o => o.status === 'Inquiry').length],
           [
             'Pickup',
             orders.filter(o => o.status === 'Pending' && o.fulfillment === 'Pickup').length,
@@ -264,6 +256,7 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
         onChange={setTab}
         items={[
           ['pending', 'Pending'],
+          ['inquiry', 'Inquiries', orders.filter(o => o.status === 'Inquiry').length],
           ['pickup', 'Pickup'],
           ['delivery', 'Delivery'],
           ['fulfilled', 'Completed'],
@@ -295,12 +288,11 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
               <strong>{money(o.total_paisa)}</strong>
             </td>
             <td>
-              <span className={'aw-status ' + (o.status === 'Pending' ? 'pending' : '')}>
-                {o.status}
-              </span>
+              <span className={'aw-status ' + (open(o.status) ? 'pending' : '')}>{o.status}</span>
+              {open(o.status) && o.expires_at && <small>{holdLabel(o)}</small>}
             </td>
             <td>
-              <Button variant="outline" onClick={() => open(o)}>
+              <Button variant="outline" onClick={() => show(o)}>
                 View details
               </Button>
             </td>
@@ -332,6 +324,7 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
                 <span>
                   {order.payment_method} · {order.payment_status}
                 </span>
+                {open(order.status) && order.expires_at && <span>{holdLabel(order)}</span>}
               </div>
             </div>
             <div className="aw-item-list">
@@ -356,6 +349,12 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
               <p>
                 Verified reference: <strong>{order.verified_reference}</strong>
               </p>
+            )}
+            {order.status === 'Inquiry' && (
+              <div className="aw-note">
+                This WhatsApp order has not reserved any stock yet. Confirm it with the customer,
+                then reserve the items so the counter cannot sell them.
+              </div>
             )}
             {order.status === 'Pending' && order.fulfillment === 'Delivery' && role === 'admin' && (
               <form
@@ -400,9 +399,23 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
                 </Button>
               </form>
             )}
-            {order.status === 'Pending' && (
+            {error && order.status !== 'Pending' && (
+              <p className="aw-error" role="alert">
+                {error}
+              </p>
+            )}
+            {open(order.status) && (
               <div className="aw-actions">
-                {order.fulfillment === 'Pickup' && (
+                {order.status === 'Inquiry' && (
+                  <Button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => perform(order.id, 'Confirm')}
+                  >
+                    {busy ? 'Saving…' : 'Confirm & reserve stock'}
+                  </Button>
+                )}
+                {order.status === 'Pending' && order.fulfillment === 'Pickup' && (
                   <Button
                     className="primary"
                     onClick={() => {
@@ -411,6 +424,15 @@ export function OrdersWorkspace({ orders, role, onAction, onPickup }) {
                     }}
                   >
                     Collect payment at POS
+                  </Button>
+                )}
+                {order.status === 'Pending' && (
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => perform(order.id, 'Extend')}
+                  >
+                    Extend hold by 24 h
                   </Button>
                 )}
                 <Button
@@ -467,7 +489,7 @@ export function CustomersWorkspace({ customers, onPOS, renderCredit }) {
     let target = id;
     if (!target) return;
     try {
-      let j = await request('/customers/' + encodeURIComponent(target) + '/overview');
+      let j = await get('/customers/' + seg(target) + '/overview');
       if (current.current === target) {
         setInfo(j);
         setError('');
@@ -763,7 +785,7 @@ export function TeamWorkspace({ accounts, vendors, onCreate, onToggle }) {
                 <input
                   required
                   type={type}
-                  minLength={key === 'password' ? 6 : undefined}
+                  minLength={key === 'password' ? 8 : undefined}
                   autoComplete={key === 'password' ? 'new-password' : 'off'}
                   value={form[key] || ''}
                   onChange={e => setForm({ ...form, [key]: e.target.value })}

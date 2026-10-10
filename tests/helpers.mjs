@@ -72,24 +72,53 @@ export async function setupOwner(password = 'ownerpass1') {
   return (await request('/login', 'POST', { password })).cookie;
 }
 export async function createStaff(owner, email = 'staff@example.com', password = 'staffpass1') {
-  const r = await request('/accounts', 'POST', { name: 'Cashier', email, password, role: 'staff' }, { cookie: owner });
+  const r = await request(
+    '/accounts',
+    'POST',
+    { name: 'Cashier', email, password, role: 'staff' },
+    { cookie: owner }
+  );
   if (r.status !== 201) throw Error('staff: ' + JSON.stringify(r.body));
   return (await request('/account/login', 'POST', { email, password })).cookie;
 }
 export async function createVendor(owner, email = 'vendor@example.com', password = 'vendorpass1') {
-  const a = await request('/vendor/apply', 'POST', { business: 'Farm', contact: 'Vendor', phone: '03001234567', email, password });
+  const a = await request('/vendor/apply', 'POST', {
+    business: 'Farm',
+    contact: 'Vendor',
+    phone: '03001234567',
+    email,
+    password,
+  });
   if (a.status !== 201) throw Error('apply: ' + JSON.stringify(a.body));
-  const approved = await request('/vendor/applications/' + a.body.id + '/approve', 'POST', undefined, { cookie: owner });
+  const approved = await request(
+    '/vendor/applications/' + a.body.id + '/approve',
+    'POST',
+    undefined,
+    { cookie: owner }
+  );
   if (approved.status !== 201) throw Error('approve: ' + JSON.stringify(approved.body));
-  return { vendorId: approved.body.vendorId, cookie: (await request('/account/login', 'POST', { email, password })).cookie };
+  return {
+    vendorId: approved.body.vendorId,
+    cookie: (await request('/account/login', 'POST', { email, password })).cookie,
+  };
 }
 export async function createCustomer(email = 'customer@example.com', password = 'customerpass') {
-  const r = await request('/customer/signup', 'POST', { name: 'Customer', email, password, phone: '03001234567' });
+  const r = await request('/customer/signup', 'POST', {
+    name: 'Customer',
+    email,
+    password,
+    phone: '03001234567',
+  });
   if (r.status !== 201) throw Error('signup: ' + JSON.stringify(r.body));
   return { cookie: r.cookie, id: r.body.user.id };
 }
 export async function createProduct(owner, extra = {}) {
-  const r = await request('/products', 'POST', { name: 'Rice', category: 'Grocery Staples', opening: 10, price: '250', cost: '180', ...extra }, { cookie: owner });
+  const r = await request(
+    '/products',
+    'POST',
+    { name: 'Rice', category: 'Grocery Staples', opening: 10, price: '250', cost: '180', ...extra },
+    { cookie: owner }
+  );
   if (r.status !== 201) throw Error('product: ' + JSON.stringify(r.body));
   return r.body;
 }

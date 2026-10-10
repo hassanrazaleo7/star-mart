@@ -25,8 +25,11 @@ import { GROCERY_CATEGORIES, GROCERY_TAXONOMY } from '../../src/grocery-categori
 
 const HEX = '([a-f0-9]+)';
 
-route('POST', '/admin/settings', { auth: 'owner', body: 'json', tx: true }, async ({ body: b, c }) =>
-  ok(await saveSettings(c, b))
+route(
+  'POST',
+  '/admin/settings',
+  { auth: 'owner', body: 'json', tx: true },
+  async ({ body: b, c }) => ok(await saveSettings(c, b))
 );
 route(
   'POST',
@@ -45,13 +48,12 @@ route(
   async ({ params }) => ok(await issueReset(params[0]), 201)
 );
 route('GET', '/customers', { auth: 'worker' }, async ({ query }) =>
-  ok({ customers: await listCustomers({ search: query.get('q') || '', limit: query.get('limit') }) })
+  ok({
+    customers: await listCustomers({ search: query.get('q') || '', limit: query.get('limit') }),
+  })
 );
-route(
-  'POST',
-  '/customers/credit-payment',
-  { auth: 'worker', body: 'json' },
-  async ({ body: b }) => ok(await collectCredit(b), 201)
+route('POST', '/customers/credit-payment', { auth: 'worker', body: 'json' }, async ({ body: b }) =>
+  ok(await collectCredit(b), 201)
 );
 route('GET', new RegExp(`^/customers/${HEX}/overview$`), { auth: 'worker' }, async ({ params }) =>
   ok(await customerOverview(params[0]))
@@ -63,10 +65,10 @@ route(
   async ({ req, user }) => {
     const identity = await firebaseIdentity(req);
     await tx(c =>
-      c.query('INSERT INTO admin_identities(uid,user_id) VALUES($1,$2) ON CONFLICT(uid) DO NOTHING', [
-        identity.id,
-        user.id,
-      ])
+      c.query(
+        'INSERT INTO admin_identities(uid,user_id) VALUES($1,$2) ON CONFLICT(uid) DO NOTHING',
+        [identity.id, user.id]
+      )
     );
     return ok({ linked: true, provider: identity.email || identity.phone });
   }
@@ -88,7 +90,9 @@ route(['GET', 'POST'], '/admin/sample-cleanup', { auth: 'owner' }, async ({ meth
 route('GET', '/admin/activity', { auth: 'owner' }, async ({ query }) =>
   ok({ events: await activityFeed(query.get('limit') || 150) })
 );
-route('POST', '/admin/sweep', { auth: 'owner' }, async () => ok({ result: await sweepIfDue(true) }));
+route('POST', '/admin/sweep', { auth: 'owner' }, async () =>
+  ok({ result: await sweepIfDue(true) })
+);
 route('GET', '/reports/daily-sales', { auth: 'owner' }, async ({ query }) =>
   ok(await dailySales(query.get('date') || ''))
 );
@@ -97,7 +101,9 @@ route('GET', '/vendor/overview', { auth: 'vendor' }, async ({ user }) => {
   const d = await db(),
     v = user.vendor_id;
   const [vendor, products, purchases, sales, movements, payments, demand] = await Promise.all([
-    d.query('SELECT id,name,contact,phone,email,address,terms,tax_id FROM vendors WHERE id=$1', [v]),
+    d.query('SELECT id,name,contact,phone,email,address,terms,tax_id FROM vendors WHERE id=$1', [
+      v,
+    ]),
     d.query('SELECT * FROM products WHERE vendor_id=$1 AND deleted_at IS NULL ORDER BY name', [v]),
     d.query('SELECT * FROM purchases WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000', [v]),
     d.query(
@@ -108,7 +114,10 @@ route('GET', '/vendor/overview', { auth: 'vendor' }, async ({ user }) => {
       'SELECT m.* FROM stock_movements m JOIN products p ON p.id=m.product_id WHERE p.vendor_id=$1 ORDER BY m.created_at DESC LIMIT 2000',
       [v]
     ),
-    d.query('SELECT * FROM vendor_payments WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000', [v]),
+    d.query(
+      'SELECT * FROM vendor_payments WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000',
+      [v]
+    ),
     d.query(
       'SELECT o.id,o.status,o.created_at,o.fulfillment,i.product_id,i.qty_milli,i.line_total_paisa FROM customer_orders o JOIN customer_order_items i ON i.order_id=o.id JOIN products p ON p.id=i.product_id WHERE p.vendor_id=$1 ORDER BY o.created_at DESC LIMIT 500',
       [v]
@@ -123,6 +132,35 @@ route('GET', '/vendor/overview', { auth: 'vendor' }, async ({ user }) => {
     payments: payments.rows,
     demand: demand.rows,
     ledger: await vendorLedger(v),
+  });
+});
+// Full supplier account for the owner's vendor workspace (history is not limited by the /state window).
+route('GET', new RegExp(`^/vendors/${HEX}/account$`), { auth: 'owner' }, async ({ params }) => {
+  const d = await db(),
+    v = params[0];
+  const vendor = (await d.query('SELECT * FROM vendors WHERE id=$1', [v])).rows[0];
+  if (!vendor) throw fail('Vendor not found', 404);
+  const [purchases, payments, returns, sales] = await Promise.all([
+    d.query('SELECT * FROM purchases WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000', [v]),
+    d.query(
+      'SELECT * FROM vendor_payments WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000',
+      [v]
+    ),
+    d.query('SELECT * FROM vendor_returns WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 2000', [
+      v,
+    ]),
+    d.query(
+      'SELECT s.id,s.receipt,s.product_id,s.qty_milli,s.unit_price_paisa,s.line_total_paisa,s.payment,s.created_at FROM sales s JOIN products p ON p.id=s.product_id WHERE p.vendor_id=$1 ORDER BY s.created_at DESC LIMIT 2000',
+      [v]
+    ),
+  ]);
+  return ok({
+    vendor,
+    ledger: await vendorLedger(v),
+    purchases: purchases.rows,
+    payments: payments.rows,
+    returns: returns.rows,
+    sales: sales.rows,
   });
 });
 route('GET', '/vendor/applications', { auth: 'owner' }, async () =>
@@ -203,7 +241,8 @@ route(
       amount = paisa(b.amount, 'Amount'),
       methodName = str(b.method);
     if (!amount) throw fail('Amount must be positive');
-    if (!['Cash', 'Bank transfer', 'Card'].includes(methodName)) throw fail('Choose a payment method');
+    if (!['Cash', 'Bank transfer', 'Card'].includes(methodName))
+      throw fail('Choose a payment method');
     if (!(await c.query('SELECT id FROM vendors WHERE id=$1 FOR UPDATE', [vendorId])).rows.length)
       throw fail('Vendor not found');
     if (amount > (await outstandingBalance(c, vendorId)))

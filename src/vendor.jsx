@@ -1,7 +1,7 @@
 import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
 import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
 import { PasswordChange } from './account-security.jsx';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Boxes,
   ShoppingBag,
@@ -10,7 +10,6 @@ import {
   ClipboardList,
   LogOut,
   Plus,
-  Upload,
   RefreshCw,
   Search,
   ScanBarcode,
@@ -23,23 +22,11 @@ import {
 } from 'lucide-react';
 import './vendor.css';
 import { useLiveRefresh } from './live.js';
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
-const qty = n =>
-  Math.round(Number(n || 0) / 1000).toLocaleString('en-PK', { maximumFractionDigits: 0 });
-const when = v => new Date(v).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' });
+import { get, post, put, seg, upload } from './lib/api.js';
+import { resizeToJpeg } from './lib/image.js';
+import { formatPaisa as money, formatQty, formatDateTime as when } from './lib/money.js';
+const qty = n => formatQty(n);
 const cats = GROCERY_CATEGORIES;
-async function request(path, method = 'GET', payload) {
-  let r = await fetch('/api' + path, {
-      method,
-      credentials: 'same-origin',
-      headers: payload ? { 'content-type': 'application/json' } : {},
-      body: payload ? JSON.stringify(payload) : undefined,
-    }),
-    j = await r.json();
-  if (!r.ok) throw Error(j.error || 'Request failed');
-  return j;
-}
 const empty = {
   name: '',
   sku: '',
@@ -66,7 +53,12 @@ const nav = [
 function csvDownload(rows, name) {
   let keys = Object.keys(rows[0] || {});
   if (!keys.length) return;
-  let quote = x => '"' + String(x ?? '').replaceAll('"', '""') + '"';
+  // Neutralise spreadsheet formula injection (=, +, -, @) in free-text cells.
+  let quote = x => {
+    let text = String(x ?? '');
+    if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+    return '"' + text.replaceAll('"', '""') + '"';
+  };
   let content = [keys, ...rows.map(r => keys.map(k => r[k]))]
     .map(r => r.map(quote).join(','))
     .join('\r\n');
@@ -106,25 +98,20 @@ export default function VendorPanel({ onLogout }) {
     [paymentFilter, setPaymentFilter] = useState('All'),
     [from, setFrom] = useState(''),
     [to, setTo] = useState(''),
-    [selected, setSelected] = useState([]),
     [scan, setScan] = useState(''),
     [camera, setCamera] = useState(false);
-  let barcode = useRef(),
-    video = useRef(),
-    stream = useRef(),
-    timer = useRef();
   async function load() {
     try {
-      setData(await request('/vendor/overview'));
+      setData(await get('/vendor/overview'));
+      setError(prev => (prev && prev.startsWith('Could not refresh') ? '' : prev));
     } catch (e) {
-      setError(e.message);
+      setError('Could not refresh: ' + e.message);
     }
   }
   useEffect(() => {
     load();
   }, []);
-  useEffect(() => setSelected([]), [search, category]);
-  useLiveRefresh(load);
+  useLiveRefresh(load, 10000);
   useEffect(() => () => stopCamera(), []);
   const products = (data?.products || []).filter(p => !p.deleted_at),
     purchases = data?.purchases || [],
@@ -166,22 +153,7 @@ export default function VendorPanel({ onLogout }) {
     );
   }
   async function uploadImage(pid, file) {
-    let bmp = await createImageBitmap(file),
-      scale = Math.min(1, 900 / Math.max(bmp.width, bmp.height)),
-      canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bmp.width * scale));
-    canvas.height = Math.max(1, Math.round(bmp.height * scale));
-    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    bmp.close();
-    let blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.82));
-    if (!blob) throw Error('Could not process picture');
-    let r = await fetch('/api/products/' + pid + '/image', {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: blob,
-      }),
-      j = await r.json();
-    if (!r.ok) throw Error(j.error || 'Image upload failed');
+    await upload('/products/' + seg(pid) + '/image', await resizeToJpeg(file), 'image/jpeg');
   }
   async function save(e) {
     e.preventDefault();
@@ -193,11 +165,9 @@ export default function VendorPanel({ onLogout }) {
       if (!form.id && !payload.sku)
         payload.sku = 'SM-' + crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase();
       delete payload.id;
-      saved = await request(
-        form.id ? '/products/' + form.id : '/products',
-        form.id ? 'PUT' : 'POST',
-        payload
-      );
+      saved = form.id
+        ? await put('/products/' + seg(form.id), payload)
+        : await post('/products', payload);
       if (photo) await uploadImage(saved.id, photo);
       setForm(null);
       setPhoto(null);
@@ -316,7 +286,7 @@ export default function VendorPanel({ onLogout }) {
                       View supplier statement <ArrowUpRight size={17} />
                     </button>
                   </div>
-                  <img src="/vendor-grocery.png" alt="Grocery shelves" />
+                  <img src="/vendor-grocery.jpg" alt="Grocery shelves" />
                 </section>
                 <div className="vp-metrics">
                   {[
@@ -414,6 +384,7 @@ export default function VendorPanel({ onLogout }) {
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder="Search product name or barcode"
+                      aria-label="Search products"
                     />
                   </label>
                   <select value={category} onChange={e => setCategory(e.target.value)}>
@@ -435,6 +406,7 @@ export default function VendorPanel({ onLogout }) {
                       }
                     }}
                     placeholder="Scan barcode, then Enter"
+                    aria-label="Scan barcode"
                   />
                   <button onClick={() => scanCatalog()}>Find / add</button>
                   <button type="button" onClick={() => setCamera(true)}>
@@ -488,6 +460,11 @@ export default function VendorPanel({ onLogout }) {
                       </td>
                       <td>
                         {money(p.cost_paisa)} / {money(p.price_paisa)}
+                        {p.vendor_proposed_price_paisa != null && (
+                          <small>
+                            Proposed {money(p.vendor_proposed_price_paisa)} · awaiting owner
+                          </small>
+                        )}
                       </td>
                       <td>
                         <button onClick={() => edit(p)}>Edit & photo</button>
@@ -643,18 +620,16 @@ export default function VendorPanel({ onLogout }) {
                       className="vp-outline"
                       onClick={() =>
                         csvDownload(
-                          ledger.entries
-                            .filter(match)
-                            .map(x => ({
-                              date: when(x.date),
-                              type: x.type,
-                              reference: x.reference,
-                              method: x.method,
-                              increase_rs: x.debit / 100,
-                              reduction_rs: x.credit / 100,
-                              balance_rs: x.balance / 100,
-                              note: x.note,
-                            })),
+                          ledger.entries.filter(match).map(x => ({
+                            date: when(x.date),
+                            type: x.type,
+                            reference: x.reference,
+                            method: x.method,
+                            increase_rs: x.debit / 100,
+                            reduction_rs: x.credit / 100,
+                            balance_rs: x.balance / 100,
+                            note: x.note,
+                          })),
                           'vendor-statement.csv'
                         )
                       }
@@ -870,6 +845,13 @@ export default function VendorPanel({ onLogout }) {
                 Available stock is what you can supply from your warehouse. Store stock increases
                 only when the owner records received goods. Existing packet barcode must be unique
                 across the store.
+                {form.id && Number(form.stock_milli) > 0 && (
+                  <>
+                    {' '}
+                    This product is already stocked at Star Mart, so price, cost, name, barcode and
+                    unit changes are sent to the owner for approval.
+                  </>
+                )}
               </p>
               <button className="vp-primary" disabled={busy}>
                 {busy ? 'Saving product…' : 'Save product & image'}

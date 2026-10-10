@@ -1,34 +1,6 @@
-import StorePage from './store-pages.jsx';
-import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
-import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
-import {
-  WorkspaceTabs,
-  RecordTable,
-  OrdersWorkspace,
-  CustomersWorkspace,
-  TeamWorkspace,
-  SectionSwitcher,
-} from './admin-workflow.jsx';
-import PickupDesk from './pickup-desk.jsx';
-import StoreSettings from './store-settings.jsx';
-import { PasswordHelp, PasswordChange, RecoveryQueue } from './account-security.jsx';
-import { Toaster, toast as notify } from 'sonner';
-import PremiumDashboard from './premium-dashboard.jsx';
-import AdminCommand from './admin-command.jsx';
-import AdminDate from './admin-date.jsx';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Table, TableHeader, TableBody, TableRow, TableHead } from '@/components/ui/table';
-import { Badge as UiBadge } from '@/components/ui/badge';
-import './admin-theme.css';
-import DailySales, { pakistanDay } from './daily-sales.jsx';
-import AdminCatalog from './admin-catalog.jsx';
-import SampleCleanup from './sample-cleanup.jsx';
-import BulkImport from './bulk-import.jsx';
-import { CustomerAuth, VendorApply } from './auth-pages.jsx';
-import CustomerDashboard from './customer-dashboard.jsx';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Toaster, toast as notify } from 'sonner';
 import {
   LayoutDashboard,
   ScanBarcode,
@@ -46,51 +18,72 @@ import {
   Download,
   LogOut,
   AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
   Package,
-  Wallet,
-  CalendarDays,
   Camera,
   X,
   Minus,
   Printer,
-  ChevronRight,
   CircleCheck,
   ShieldCheck,
   RefreshCw,
   Upload,
   PackageCheck,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Badge as UiBadge } from '@/components/ui/badge';
+import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
+import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
+import {
+  WorkspaceTabs,
+  RecordTable,
+  OrdersWorkspace,
+  CustomersWorkspace,
+  TeamWorkspace,
+  SectionSwitcher,
+} from './admin-workflow.jsx';
+import PickupDesk from './pickup-desk.jsx';
+import StoreSettings from './store-settings.jsx';
+import { PasswordChange } from './account-security.jsx';
+import PremiumDashboard from './premium-dashboard.jsx';
+import AdminCommand from './admin-command.jsx';
+import AdminDate from './admin-date.jsx';
+import DailySales from './daily-sales.jsx';
+import AdminCatalog from './admin-catalog.jsx';
+import Reports from './reports.jsx';
+import CreditCollection from './components/CreditCollection.jsx';
+import NotFound from './components/NotFound.jsx';
+import { useLiveRefresh } from './live.js';
+import { api, get, post, seg, upload } from './lib/api.js';
+import {
+  formatPaisa as M,
+  formatQty as Q,
+  formatDateTime as date,
+  lineTotalPaisa,
+} from './lib/money.js';
+import { resizeToJpeg } from './lib/image.js';
+import { configured as firebaseConfigured, loadFirebase } from './firebase-config.js';
+import './admin-theme.css';
 import './style.css';
 import './admin-premium.css';
-import Shop from './shop.jsx';
-import VendorPanel from './vendor.jsx';
-import VendorManagement from './vendor-admin.jsx';
-import { useLiveRefresh } from './live.js';
-import {
-  auth as firebaseAuth,
-  configured as firebaseConfigured,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-} from './firebase.js';
 import './brand.css';
 import './admin-workflow.css';
-const M = n =>
-  'Rs ' +
-  (Number(n || 0) / 100).toLocaleString('en-PK', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-const Q = n => (Number(n || 0) / 1000).toLocaleString('en-PK', { maximumFractionDigits: 3 });
-const date = x =>
-  new Date(x).toLocaleString('en-PK', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Karachi',
-  });
+
+// Portals outside the admin shell load on demand so the POS never downloads the storefront, and vice versa.
+const Shop = lazy(() => import('./shop.jsx'));
+const VendorPanel = lazy(() => import('./vendor.jsx'));
+const VendorManagement = lazy(() => import('./vendor-admin.jsx'));
+const StorePage = lazy(() => import('./store-pages.jsx'));
+const CustomerDashboard = lazy(() => import('./customer-dashboard.jsx'));
+const BulkImport = lazy(() => import('./bulk-import.jsx'));
+const PasswordHelp = lazy(() =>
+  import('./account-security.jsx').then(m => ({ default: m.PasswordHelp }))
+);
+const CustomerAuth = lazy(() =>
+  import('./auth-pages.jsx').then(m => ({ default: m.CustomerAuth }))
+);
+const VendorApply = lazy(() => import('./auth-pages.jsx').then(m => ({ default: m.VendorApply })));
+
 const categories = GROCERY_CATEGORIES;
 const blank = {
   products: [],
@@ -102,17 +95,17 @@ const blank = {
   expenses: [],
   movements: [],
 };
-async function api(path, method = 'GET', body) {
-  let r = await fetch('/api' + path, {
-    method,
-    credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  let j = await r.json();
-  if (!r.ok) throw Error(j.error || 'Request failed');
-  return j;
-}
+const emptyBill = {
+  payment: 'Cash',
+  discount: '',
+  discountReason: '',
+  tax: '',
+  customer: '',
+  customerId: '',
+  redeemPoints: 0,
+  received: '',
+  note: '',
+};
 const nav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['pos', 'POS & barcode', ScanBarcode],
@@ -130,6 +123,11 @@ const nav = [
   ['accounts', 'Team accounts', Users],
   ['settings', 'Store settings', ShieldCheck],
 ];
+const roleViews = {
+  admin: nav.map(n => n[0]),
+  staff: ['pos', 'orders', 'products'],
+  vendor: [],
+};
 const fields = {
   product: [
     ['name', 'Product name', 'text', true],
@@ -146,7 +144,7 @@ const fields = {
     ['price', 'Sell price per unit (Rs)', 'number'],
     ['reorder', 'Reorder level', 'number'],
     ['reorderQty', 'Reorder quantity', 'number'],
-    ['taxRate', 'Tax rate % (reference)', 'number'],
+    ['taxRate', 'Tax rate % (applied at checkout)', 'number'],
     ['description', 'Description'],
   ],
   vendor: [
@@ -250,6 +248,48 @@ const recordGroups = {
     },
   ],
 };
+const WHOLE_UNITS = ['opening', 'vendorAvailable', 'qty', 'change', 'reorder', 'reorderQty'];
+const recordPaths = {
+  product: '/products',
+  vendor: '/vendors',
+  purchase: '/purchases',
+  adjustment: '/adjustments',
+  expense: '/expenses',
+};
+const viewTitles = {
+  dashboard: ['A clear view of your store.', 'Track every item, rupee and reorder point.'],
+  pos: ['Point of sale.', 'Scan a barcode, prepare the bill and collect payment.'],
+  products: ['Product inventory.', 'Every product, price, barcode and shelf in one place.'],
+  orders: [
+    'Customer orders.',
+    'Review pickup and delivery requests; confirm, release or fulfill stock.',
+  ],
+  purchases: ['Purchase register.', 'Record received stock with invoice, vendor and expiry.'],
+  sales: ['Sales & receipts.', 'Every checkout line and its receipt.'],
+  vendors: [
+    'Vendor workspace.',
+    'Select a vendor to manage their details, products and accounts in one place.',
+  ],
+  adjustments: ['Stock adjustments.', 'Explain every stock correction and loss.'],
+  expenses: ['Business expenses.', 'Keep operating expenses visible.'],
+  reports: ['Reports & insights.', 'Figures calculated from recorded transactions.'],
+  customers: ['Customer accounts.', 'Registered customers, credit and Star Points.'],
+  bulk: ['Bulk import.', 'Load customers and products from a prepared ZIP.'],
+  activity: ['Activity log.', 'Who changed what, and when.'],
+  accounts: ['Team accounts.', 'Create staff access with limited permissions.'],
+  settings: ['Store settings.', 'Store contact details, payment accounts and account security.'],
+};
+const addTypes = {
+  products: 'product',
+  vendors: 'vendor',
+  purchases: 'purchase',
+  adjustments: 'adjustment',
+  expenses: 'expense',
+};
+
+const stock = p => Number(p?.stock_milli || 0),
+  reserved = p => Number(p?.reserved_milli || 0),
+  sellable = p => stock(p) - reserved(p);
 function IconButton({ icon: Icon, children, ...props }) {
   return (
     <Button {...props}>
@@ -258,84 +298,131 @@ function IconButton({ icon: Icon, children, ...props }) {
     </Button>
   );
 }
-function CreditCollection({ customerId, info, reload, flash, setError }) {
-  let [amount, setAmount] = useState(''),
-    [method, setMethod] = useState('Cash'),
-    [busy, setBusy] = useState(false);
-  let bills = info?.bills.filter(b => b.duePaisa > 0) || [];
-  async function pay(receiptId) {
-    if (!amount || Number(amount) <= 0) {
-      setError('Enter the amount collected.');
-      return;
-    }
-    setBusy(true);
-    try {
-      let r = await api('/customers/credit-payment', 'POST', {
-        customerId,
-        receiptId,
-        amount,
-        method,
-      });
-      setAmount('');
-      await reload();
-      flash('Credit payment recorded. Remaining: ' + M(r.remainingPaisa));
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
+function Badge({ children, warn }) {
   return (
-    <div className="pos-credit">
-      <h3>Collect customer credit</h3>
-      {bills.length ? (
-        bills.map(b => (
-          <div className="credit-line" key={b.id}>
-            <div>
-              <strong>{b.id}</strong>
-              <small>Due {M(b.duePaisa)}</small>
-            </div>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              max={b.duePaisa / 100}
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="Rs amount"
-              aria-label="Payment amount"
-            />
-            <select
-              value={method}
-              onChange={e => setMethod(e.target.value)}
-              aria-label="Payment method"
-            >
-              <option>Cash</option>
-              <option>Card</option>
-              <option>Bank transfer</option>
-            </select>
-            <button disabled={busy} onClick={() => pay(b.id)}>
-              Record payment
-            </button>
-          </div>
-        ))
-      ) : (
-        <p>No unpaid credit bills for this customer.</p>
-      )}
+    <UiBadge variant={warn ? 'outline' : 'secondary'} className={'badge ' + (warn ? 'warn' : '')}>
+      {children}
+    </UiBadge>
+  );
+}
+function Empty({ text }) {
+  return (
+    <div className="empty">
+      <Package size={30} />
+      <span>{text || 'No records yet. Add your first entry to get started.'}</span>
     </div>
   );
 }
+const flash = s => notify.success(s);
+const viewFromPath = (pathname, role) => {
+  const view = pathname.split('/')[2];
+  return view && roleViews[role]?.includes(view) ? view : null;
+};
+
+// Generic record form used for products, vendors, purchases, adjustments and expenses.
+function RecordField({ field, form, setForm, modal, products, vendors, stock, product }) {
+  const [key, label, type = 'text', required = false, options] = field;
+  const update = value => setForm(prev => ({ ...prev, [key]: value }));
+  if (type === 'select')
+    return (
+      <label>
+        {label}
+        {required && ' *'}
+        <select
+          aria-label={label}
+          required={required}
+          value={form[key] ?? options[0]}
+          onChange={e => update(e.target.value)}
+        >
+          {(key === 'category' &&
+          modal === 'product' &&
+          form.category &&
+          !options.includes(form.category)
+            ? [...options, form.category]
+            : options
+          ).map(x => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+      </label>
+    );
+  if (type === 'product' || type === 'vendor')
+    return (
+      <label>
+        {label}
+        {required && ' *'}
+        <select
+          aria-label={label}
+          required={required}
+          value={form[key] ?? ''}
+          onChange={e => {
+            const v = e.target.value;
+            setForm(prev => ({
+              ...prev,
+              [key]: v,
+              ...(key === 'productId' && modal === 'purchase'
+                ? {
+                    cost: Number(product(v)?.cost_paisa || 0) / 100,
+                    vendorId: product(v)?.vendor_id || '',
+                  }
+                : {}),
+            }));
+          }}
+        >
+          <option value="">{type === 'product' ? 'Select product' : 'No vendor selected'}</option>
+          {(type === 'product'
+            ? products.filter(p => !p.deleted_at && p.catalog_status !== 'archived')
+            : vendors
+          ).map(x => (
+            <option value={x.id} key={x.id}>
+              {x.name}
+              {type === 'product' ? ' (' + Q(stock(x)) + ' in stock)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  const fractional =
+    modal === 'product'
+      ? form.unit && form.unit !== 'piece'
+      : product(form.productId)?.unit && product(form.productId)?.unit !== 'piece';
+  return (
+    <label>
+      {label}
+      {required && ' *'}
+      <input
+        aria-label={label}
+        type={type}
+        min={type === 'number' && key !== 'change' ? 0 : undefined}
+        step={
+          type === 'number'
+            ? WHOLE_UNITS.includes(key)
+              ? fractional
+                ? '0.001'
+                : '1'
+              : '0.01'
+            : undefined
+        }
+        required={required}
+        value={form[key] ?? ''}
+        onChange={e => update(e.target.value)}
+        placeholder={key === 'change' ? 'e.g. -2 or 3' : ''}
+      />
+    </label>
+  );
+}
+
 function App({ portal }) {
-  let [mode, setMode] = useState('loading'),
-    [setupAvailable, setSetupAvailable] = useState(false),
+  const [mode, setMode] = useState('loading'),
     [password, setPassword] = useState(''),
     [owner, setOwner] = useState(''),
     [user, setUser] = useState(''),
     [role, setRole] = useState('admin'),
     [email, setEmail] = useState(''),
     [accounts, setAccounts] = useState([]),
-    [accountForm, setAccountForm] = useState({ role: 'staff' }),
-    [view, setView] = useState('dashboard'),
+    [view, setView] = useState(
+      () => viewFromPath(location.pathname, portal) || (portal === 'staff' ? 'pos' : 'dashboard')
+    ),
     [posTab, setPosTab] = useState('counter'),
     [data, setData] = useState(blank),
     [orders, setOrders] = useState([]),
@@ -345,7 +432,7 @@ function App({ portal }) {
     [modal, setModal] = useState(null),
     [form, setForm] = useState({}),
     [error, setError] = useState(''),
-    [toast, setToast] = useState(''),
+    [modalError, setModalError] = useState(''),
     [query, setQuery] = useState(''),
     [filter, setFilter] = useState('all'),
     [sidebar, setSidebar] = useState(false),
@@ -353,62 +440,51 @@ function App({ portal }) {
     [cart, setCart] = useState({}),
     [scan, setScan] = useState(''),
     [search, setSearch] = useState(''),
-    [bill, setBill] = useState({
-      payment: 'Cash',
-      discount: 0,
-      tax: 0,
-      customer: '',
-      customerId: '',
-      redeemPoints: 0,
-      received: '',
-      note: '',
-    }),
+    [bill, setBill] = useState(emptyBill),
     [receipt, setReceipt] = useState(null),
     [legacyImport, setLegacyImport] = useState(null),
     [camera, setCamera] = useState(false),
     [linkOpen, setLinkOpen] = useState(false),
     [adminPhone, setAdminPhone] = useState(''),
     [adminCode, setAdminCode] = useState(''),
-    [adminPhoneResult, setAdminPhoneResult] = useState(null);
-  let scanRef = useRef(),
-    videoRef = useRef(),
-    streamRef = useRef(),
-    timerRef = useRef(),
-    adminVerifier = useRef();
-  const flash = s => {
-    setToast(s);
-    setTimeout(() => setToast(''), 3500);
-  };
-  useLiveRefresh(() => {
-    if (mode === 'ready' && portal !== 'vendor') return refresh();
-  });
-  useEffect(() => {
-    if (toast) notify.success(toast);
-  }, [toast]);
+    [adminPhoneResult, setAdminPhoneResult] = useState(null),
+    [refreshToken, setRefreshToken] = useState(0);
+  const scanRef = useRef(),
+    adminVerifier = useRef(),
+    requestKey = useRef(null);
+
   async function refresh() {
-    let me = await api('/me');
+    const me = await get('/me');
     if (me.user.role === 'vendor') return;
-    let [v, o, c] = await Promise.all([api('/state'), api('/orders'), api('/customers')]);
+    const [v, o, c] = await Promise.all([get('/state'), get('/orders'), get('/customers')]);
     setData(v);
     setOrders(o.orders);
     setCustomers(c.customers);
-    if (me.user.role === 'admin') {
-      let feed = await api('/admin/activity');
-      setActivities(feed.events);
-    }
+    if (me.user.role === 'admin') setActivities((await get('/admin/activity')).events);
+    setRefreshToken(n => n + 1);
   }
+  const sync = useLiveRefresh(() => {
+    if (mode === 'ready' && portal !== 'vendor') return refresh();
+  });
+
+  // URL ↔ view: /admin/orders opens the orders view and the back button works.
+  useEffect(() => {
+    const onPop = () =>
+      setView(viewFromPath(location.pathname, role) || (role === 'staff' ? 'pos' : 'dashboard'));
+    addEventListener('popstate', onPop);
+    return () => removeEventListener('popstate', onPop);
+  }, [role]);
+
   useEffect(() => {
     (async () => {
       try {
-        let setup = await api('/setup/status');
+        const setup = await get('/setup/status');
         if (!setup.setup) {
-          setSetupAvailable(true);
           setMode(portal === 'admin' ? 'setup' : 'login');
           setError(portal === 'admin' ? '' : 'First create the store owner account at /admin.');
           return;
         }
-        setSetupAvailable(false);
-        let me = await api('/me');
+        const me = await get('/me');
         if (me.user.role !== portal) {
           setMode('login');
           setError(
@@ -420,48 +496,50 @@ function App({ portal }) {
           );
           return;
         }
-        setUser(me.user.name);
-        setRole(me.user.role);
-        setView(me.user.role === 'staff' ? 'pos' : 'dashboard');
+        enter(me.user.name, me.user.role);
         await refresh();
         setMode('ready');
       } catch (e) {
-        setMode(e.message.includes('sign in') ? 'login' : 'error');
-        setError(e.message);
+        setMode(e.status === 401 ? 'login' : 'error');
+        setError(e.status === 401 ? '' : e.message);
       }
     })();
   }, []);
+
+  function enter(name, nextRole) {
+    setUser(name);
+    setRole(nextRole);
+    const target =
+      viewFromPath(location.pathname, nextRole) || (nextRole === 'staff' ? 'pos' : 'dashboard');
+    setView(target);
+    if (nextRole !== 'vendor') history.replaceState(null, '', '/' + portal + '/' + target);
+  }
   async function sign(e) {
     e.preventDefault();
     setError('');
     try {
       setBusy(true);
       if (mode === 'setup') {
-        await api('/setup', 'POST', { name: owner, password });
-        setSetupAvailable(false);
-        let r = await api('/login', 'POST', { password });
-        setUser(r.name);
-        setRole('admin');
+        await post('/setup', { name: owner, password });
+        const r = await post('/login', { password });
+        enter(r.name, 'admin');
         await refresh();
         setMode('ready');
         setPassword('');
         flash('Store owner account created.');
       } else {
         if (portal !== 'admin' && !email) throw Error('Enter your ' + portal + ' account email.');
-        let r = await api(
+        const r = await post(
           portal === 'admin' ? '/login' : '/account/login',
-          'POST',
           portal === 'admin' ? { password } : { email, password }
         );
         if ((r.role || 'admin') !== portal) {
-          await api('/logout', 'POST');
+          await post('/logout');
           throw Error(
             'This account belongs to the ' + r.role + ' panel. Open /' + r.role + ' instead.'
           );
         }
-        setUser(r.name);
-        setRole(r.role || 'admin');
-        setView(r.role === 'staff' ? 'pos' : 'dashboard');
+        enter(r.name, r.role || 'admin');
         await refresh();
         setMode('ready');
         setPassword('');
@@ -474,21 +552,17 @@ function App({ portal }) {
   }
   async function handleFirebaseIdentity(identity, link = false) {
     if (portal !== 'admin') throw Error('Google/mobile sign-in is for linked store owners only.');
-    let token = await identity.getIdToken(),
-      r = await fetch('/api/admin/' + (link ? 'link' : 'firebase-login'), {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
-        body: '{}',
-      }),
-      j = await r.json();
-    if (!r.ok) throw Error(j.error || 'Sign-in failed');
+    const token = await identity.getIdToken();
+    const j = await api('/admin/' + (link ? 'link' : 'firebase-login'), {
+      method: 'POST',
+      body: {},
+      headers: { authorization: 'Bearer ' + token },
+    });
     if (link) {
       setLinkOpen(false);
       flash('Verified account linked for admin sign-in.');
     } else {
-      setUser(j.name);
-      setRole('admin');
+      enter(j.name, 'admin');
       await refresh();
       setMode('ready');
       flash('Signed in securely.');
@@ -502,7 +576,8 @@ function App({ portal }) {
     setError('');
     try {
       setBusy(true);
-      let result = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
+      const fb = await loadFirebase();
+      const result = await fb.signInWithPopup(fb.auth, new fb.GoogleAuthProvider());
       await handleFirebaseIdentity(result.user, link);
     } catch (e) {
       setError(e.message);
@@ -516,11 +591,12 @@ function App({ portal }) {
       if (!/^\+[1-9]\d{7,14}$/.test(adminPhone))
         throw Error('Use a number with country code, e.g. +923001234567');
       setBusy(true);
-      adminVerifier.current ||= new RecaptchaVerifier(firebaseAuth, 'admin-recaptcha', {
+      const fb = await loadFirebase();
+      adminVerifier.current ||= new fb.RecaptchaVerifier(fb.auth, 'admin-recaptcha', {
         size: 'normal',
       });
       setAdminPhoneResult(
-        await signInWithPhoneNumber(firebaseAuth, adminPhone, adminVerifier.current)
+        await fb.signInWithPhoneNumber(fb.auth, adminPhone, adminVerifier.current)
       );
       flash('Verification code sent.');
     } catch (e) {
@@ -535,7 +611,7 @@ function App({ portal }) {
     setError('');
     try {
       setBusy(true);
-      let result = await adminPhoneResult.confirm(adminCode);
+      const result = await adminPhoneResult.confirm(adminCode);
       await handleFirebaseIdentity(result.user, link);
       setAdminPhoneResult(null);
       setAdminCode('');
@@ -546,32 +622,17 @@ function App({ portal }) {
     }
   }
   async function loadAccounts() {
-    let r = await api('/accounts');
-    setAccounts(r.accounts);
+    setAccounts((await get('/accounts')).accounts);
   }
   async function uploadPicture(productId, file) {
     if (!file) return;
     setBusy(true);
     setError('');
     try {
-      let img = await createImageBitmap(file),
-        scale = Math.min(1, 900 / Math.max(img.width, img.height)),
-        canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(img.width * scale));
-      canvas.height = Math.max(1, Math.round(img.height * scale));
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      let blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
-      img.close();
-      if (blob.size > 1_000_000) throw Error('Image is too large after resizing');
-      let r = await fetch('/api/products/' + productId + '/image', {
-          method: 'POST',
-          body: blob,
-          credentials: 'same-origin',
-        }),
-        j = await r.json();
-      if (!r.ok) throw Error(j.error || 'Upload failed');
-      await refresh();
+      const blob = await resizeToJpeg(file);
+      await upload('/products/' + seg(productId) + '/image', blob, 'image/jpeg');
       flash('Product image uploaded.');
+      await sync().catch(() => {});
     } catch (e) {
       setError(e.message);
     } finally {
@@ -580,39 +641,75 @@ function App({ portal }) {
   }
   async function logout() {
     try {
-      await api('/logout', 'POST');
-      setMode('login');
-      setRole('admin');
-      setData(blank);
-      setCart({});
+      await post('/logout');
     } catch (e) {
       setError('Could not sign out. ' + e.message);
+      return;
     }
+    setMode('login');
+    setRole('admin');
+    setUser('');
+    setData(blank);
+    setOrders([]);
+    setCustomers([]);
+    setActivities([]);
+    setAccounts([]);
+    setCustomerInfo(null);
+    setCart({});
+    setBill(emptyBill);
+    setReceipt(null);
+    setError('');
+    history.replaceState(null, '', '/' + portal);
   }
-  async function action(path, method, payload, onDone) {
+  // A successful write is reported as success even when the follow-up refresh fails (no accidental double sale).
+  async function action(path, method, payload, onDone, { report = setError } = {}) {
     setBusy(true);
-    setError('');
+    report('');
+    let result;
     try {
-      let result = await api(path, method, payload);
-      await refresh();
-      onDone?.(result);
-      flash('Saved successfully.');
-      return result;
+      result = await api(path, { method, body: payload });
     } catch (e) {
-      setError(e.message);
-      return null;
-    } finally {
+      report(e.message);
       setBusy(false);
+      return null;
     }
+    onDone?.(result);
+    flash('Saved successfully.');
+    try {
+      await sync();
+    } catch {
+      notify.message('Saved. The screen will refresh in a moment.');
+    }
+    setBusy(false);
+    return result;
   }
-  const product = id => data.products.find(p => p.id === id),
-    stock = p => Number(p.stock_milli || 0),
-    inStock = data.products.filter(
-      p => !p.deleted_at && stock(p) > 0 && p.catalog_status !== 'archived'
-    ),
-    low = data.products.filter(p => !p.deleted_at && stock(p) <= Number(p.reorder_milli || 0));
+  const productMap = useMemo(() => new Map(data.products.map(p => [p.id, p])), [data.products]);
+  const product = id => productMap.get(id);
+  const inStock = useMemo(
+    () =>
+      data.products.filter(
+        p => !p.deleted_at && sellable(p) > 0 && p.catalog_status !== 'archived'
+      ),
+    [data.products]
+  );
+  const low = useMemo(
+    () => data.products.filter(p => !p.deleted_at && stock(p) <= Number(p.reorder_milli || 0)),
+    [data.products]
+  );
+  const quickAdd = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (
+      q
+        ? inStock.filter(p =>
+            (p.name + ' ' + p.barcode + ' ' + p.sku + ' ' + p.category + ' ' + p.brand)
+              .toLowerCase()
+              .includes(q)
+          )
+        : inStock
+    ).slice(0, 40);
+  }, [inStock, search]);
   function receiveStock(p, vendorId = '') {
-    setError('');
+    setModalError('');
     setModal('purchase');
     setForm({
       ...model.purchase,
@@ -623,9 +720,9 @@ function App({ portal }) {
     });
   }
   function open(type, item) {
-    setError('');
+    setModalError('');
     setModal(type);
-    let v = item || model[type] || {};
+    const v = item || model[type] || {};
     setForm(
       item
         ? {
@@ -645,22 +742,17 @@ function App({ portal }) {
   }
   async function submit(e) {
     e.preventDefault();
-    let type = modal,
-      path = {
-        product: '/products',
-        vendor: '/vendors',
-        purchase: '/purchases',
-        adjustment: '/adjustments',
-        expense: '/expenses',
-      }[type],
+    const type = modal,
       id = form.id;
-    if (id && (type === 'product' || type === 'vendor')) path += '/' + id;
-    let result = await action(path, id ? 'PUT' : 'POST', form, () => setModal(null));
-    if (result && type === 'purchase') setView('purchases');
+    let path = recordPaths[type];
+    if (id && (type === 'product' || type === 'vendor')) path += '/' + seg(id);
+    const result = await action(path, id ? 'PUT' : 'POST', form, () => setModal(null), {
+      report: setModalError,
+    });
+    if (result && type === 'purchase') go('purchases');
   }
-  async function orderAction(id, status, payload) {
-    return action('/orders/' + encodeURIComponent(id) + '/' + status, 'POST', payload);
-  }
+  const orderAction = (id, status, payload) =>
+    action('/orders/' + seg(id) + '/' + seg(status), 'POST', payload);
   function go(v) {
     setCamera(false);
     setView(v);
@@ -668,84 +760,120 @@ function App({ portal }) {
     setFilter('all');
     setSidebar(false);
     setError('');
+    if (location.pathname !== '/' + portal + '/' + v)
+      history.pushState(null, '', '/' + portal + '/' + v);
     if (v === 'accounts' || v === 'vendors') loadAccounts().catch(e => setError(e.message));
     if (v === 'pos') setTimeout(() => scanRef.current?.focus(), 80);
   }
   function add(p) {
-    if (p?.deleted_at || p?.catalog_status === 'archived') {
-      setError('This product is archived or removed. Restore it before selling.');
-      return;
-    }
     if (!p) {
       setError('Barcode / SKU not found. Add this product in inventory first.');
       return;
     }
-    let next = Number(cart[p.id] || 0) + 1000;
-    if (next > stock(p)) {
-      setError(p.name + ' has only ' + Q(stock(p)) + ' in stock.');
+    if (p.deleted_at || p.catalog_status === 'archived') {
+      setError('This product is archived or removed. Restore it before selling.');
       return;
     }
-    setCart({ ...cart, [p.id]: next });
+    const next = Number(cart[p.id] || 0) + 1000;
+    if (next > sellable(p)) {
+      setError(
+        p.name +
+          ' has only ' +
+          Q(sellable(p)) +
+          ' available' +
+          (reserved(p) ? ' (' + Q(reserved(p)) + ' reserved by online orders).' : '.')
+      );
+      return;
+    }
+    setCart(prev => ({ ...prev, [p.id]: Number(prev[p.id] || 0) + 1000 }));
     setError('');
     setScan('');
     scanRef.current?.focus();
   }
   function scanAdd(text = scan) {
-    let q = text.trim().toLowerCase();
+    const q = text.trim().toLowerCase();
     if (!q) return;
     let p = data.products.find(x => x.barcode?.toLowerCase() === q || x.sku?.toLowerCase() === q);
     if (!p) {
-      let hits = data.products.filter(x => x.name.toLowerCase().includes(q));
+      const hits = data.products.filter(x => x.name.toLowerCase().includes(q));
       if (hits.length === 1) p = hits[0];
     }
     add(p);
   }
   function updateCart(id, delta) {
-    let next = Number(cart[id] || 0) + delta,
-      p = product(id);
-    if (next > stock(p)) {
+    const p = product(id),
+      next = Number(cart[id] || 0) + delta;
+    if (next > sellable(p)) {
       setError('Not enough stock for ' + p.name);
       return;
     }
-    let c = { ...cart };
-    if (next <= 0) delete c[id];
-    else c[id] = next;
-    setCart(c);
+    setCart(prev => {
+      const copy = { ...prev },
+        n = Number(prev[id] || 0) + delta;
+      if (n <= 0) delete copy[id];
+      else copy[id] = n;
+      return copy;
+    });
     setError('');
   }
-  let lines = Object.entries(cart)
-      .map(([id, qty]) => ({ p: product(id), qty }))
-      .filter(x => x.p),
-    subtotal = lines.reduce((a, x) => a + Math.round((x.qty * Number(x.p.price_paisa)) / 1000), 0),
+  function clearBill() {
+    setCart({});
+    requestKey.current = null;
+  }
+  const lines = useMemo(
+    () =>
+      Object.entries(cart)
+        .map(([id, qty]) => ({ p: productMap.get(id), qty }))
+        .filter(x => x.p),
+    [cart, productMap]
+  );
+  const subtotal = lines.reduce((a, x) => a + lineTotalPaisa(x.qty, x.p.price_paisa), 0),
     discount = Math.round(Number(bill.discount || 0) * 100),
-    tax = Math.round(Number(bill.tax || 0) * 100),
     loyaltyDiscount = (Number(bill.redeemPoints || 0) / 100) * 5000,
-    total = Math.max(0, subtotal - discount - loyaltyDiscount + tax);
+    taxOverride =
+      role === 'admin' && bill.tax !== '' ? Math.round(Number(bill.tax || 0) * 100) : null,
+    taxEstimate =
+      taxOverride ??
+      lines.reduce(
+        (n, x) =>
+          n +
+          Math.round(
+            (lineTotalPaisa(x.qty, x.p.price_paisa) *
+              (1 - (discount + loyaltyDiscount) / Math.max(1, subtotal)) *
+              Number(x.p.tax_rate_bps || 0)) /
+              10000
+          ),
+        0
+      ),
+    total = Math.max(0, subtotal - discount - loyaltyDiscount + taxEstimate);
   async function loadCustomer(customerId) {
     if (!customerId) {
       setCustomerInfo(null);
       return;
     }
     try {
-      setCustomerInfo(await api('/customers/' + encodeURIComponent(customerId) + '/overview'));
+      setCustomerInfo(await get('/customers/' + seg(customerId) + '/overview'));
     } catch (e) {
       setError(e.message);
     }
   }
   async function checkout() {
-    let payload = { lines: lines.map(x => ({ productId: x.p.id, qty: x.qty / 1000 })), ...bill };
-    let r = await action('/checkout', 'POST', payload, () => {
+    if (!lines.length) return;
+    if (discount > 0 && !bill.discountReason.trim()) {
+      setError('Enter a reason for the discount.');
+      return;
+    }
+    requestKey.current ||= crypto.randomUUID();
+    const payload = {
+      lines: lines.map(x => ({ productId: x.p.id, qty: x.qty / 1000 })),
+      ...bill,
+      tax: role === 'admin' && bill.tax !== '' ? bill.tax : undefined,
+      requestKey: requestKey.current,
+    };
+    const r = await action('/checkout', 'POST', payload, () => {
       setCart({});
-      setBill({
-        payment: 'Cash',
-        discount: 0,
-        tax: 0,
-        customer: '',
-        customerId: '',
-        redeemPoints: 0,
-        received: '',
-        note: '',
-      });
+      setBill(emptyBill);
+      requestKey.current = null;
     });
     if (r) {
       setReceipt(r);
@@ -753,12 +881,12 @@ function App({ portal }) {
     }
   }
   function printReceipt(r = receipt) {
-    let popup = window.open('', '_blank', 'width=430,height=700');
+    const popup = window.open('', '_blank', 'width=430,height=700');
     if (!popup) {
       flash('Allow popups to print receipt.');
       return;
     }
-    let esc = s =>
+    const esc = s =>
       String(s ?? '').replace(
         /[&<>"']/g,
         c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
@@ -769,56 +897,71 @@ function App({ portal }) {
     popup.document.close();
     setTimeout(() => popup.print(), 250);
   }
-  function startCamera() {
-    setCamera(true);
-  }
-  function stopCamera() {
-    setCamera(false);
-  }
   async function uploadLegacy(e) {
-    let file = e.target.files?.[0];
+    const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     setError('');
     try {
-      let old = JSON.parse(await file.text());
-      setLegacyImport({ data: old, name: file.name });
-    } catch (ex) {
+      setLegacyImport({ data: JSON.parse(await file.text()), name: file.name });
+    } catch {
       setError('Could not read this backup. Select a valid Star Mart JSON file.');
     }
   }
   async function confirmLegacyImport() {
     setBusy(true);
-    setError('');
+    setModalError('');
     try {
-      let result = await api('/import-legacy', 'POST', legacyImport.data);
-      await refresh();
+      const result = await post('/import-legacy', legacyImport.data);
       setLegacyImport(null);
       flash('Imported ' + result.products + ' products and ' + result.sales + ' sales.');
+      await sync().catch(() => {});
     } catch (ex) {
-      setError(ex.message);
+      setModalError(ex.message);
     } finally {
       setBusy(false);
     }
   }
-  function exportBackup() {
-    let blob = new Blob(
+  async function exportBackup() {
+    setBusy(true);
+    try {
+      const full = await get('/state?from=2000-01-01');
+      const blob = new Blob(
         [
           JSON.stringify(
-            { format: 'star-mart-server-export-v1', exportedAt: new Date().toISOString(), ...data },
+            {
+              format: 'star-mart-server-export-v2',
+              exportedAt: new Date().toISOString(),
+              note:
+                'Operational export, up to ' +
+                (full.window?.limit || 5000) +
+                ' rows per table. Not a database backup.',
+              ...full,
+            },
             null,
             2
           ),
         ],
         { type: 'application/json' }
-      ),
-      a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'star-mart-export-' + new Date().toISOString().slice(0, 10) + '.json';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      );
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'star-mart-export-' + new Date().toISOString().slice(0, 10) + '.json';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
   }
-  if (mode === 'ready' && portal === 'vendor') return <VendorPanel onLogout={logout} />;
+
+  if (mode === 'ready' && portal === 'vendor')
+    return (
+      <Suspense fallback={<div className="boot">Loading vendor workspace…</div>}>
+        <VendorPanel onLogout={logout} />
+      </Suspense>
+    );
   if (mode === 'loading') return <div className="boot">Loading Star Mart…</div>;
   if (mode !== 'ready')
     return (
@@ -878,7 +1021,7 @@ function App({ portal }) {
             </h2>
             <p>
               {mode === 'setup'
-                ? 'Set the store owner name and password.'
+                ? 'Set the store owner name and a password of at least 8 characters.'
                 : portal === 'vendor'
                   ? 'Use your email and the password you chose. Your application must be approved first.'
                   : portal === 'staff'
@@ -924,7 +1067,7 @@ function App({ portal }) {
                       setError('');
                     }}
                     required
-                    minLength={mode === 'setup' ? 6 : 1}
+                    minLength={mode === 'setup' ? 8 : 1}
                     autoComplete={mode === 'setup' ? 'new-password' : 'current-password'}
                   />
                 </span>
@@ -968,6 +1111,7 @@ function App({ portal }) {
         </main>
       </div>
     );
+  const visibleNav = nav.filter(([key]) => roleViews[role].includes(key));
   return (
     <div className="shell sm-premium">
       <aside className={'sidebar ' + (sidebar ? 'side-open' : '')}>
@@ -979,20 +1123,13 @@ function App({ portal }) {
         </div>
         <div className="side-label">STORE WORKSPACE</div>
         <nav>
-          {nav
-            .filter(
-              ([key]) =>
-                role === 'admin' ||
-                (role === 'staff' && ['pos', 'orders', 'products'].includes(key)) ||
-                (role === 'vendor' && ['products', 'purchases', 'vendors'].includes(key))
-            )
-            .map(([key, label, Icon]) => (
-              <button key={key} onClick={() => go(key)} className={view === key ? 'active' : ''}>
-                <Icon size={19} />
-                <span>{label}</span>
-                {key === 'products' && low.length > 0 && <em>{low.length}</em>}
-              </button>
-            ))}
+          {visibleNav.map(([key, label, Icon]) => (
+            <button key={key} onClick={() => go(key)} className={view === key ? 'active' : ''}>
+              <Icon size={19} />
+              <span>{label}</span>
+              {key === 'products' && low.length > 0 && <em>{low.length}</em>}
+            </button>
+          ))}
         </nav>
         <div className="side-footer">
           <div className="profile">
@@ -1025,19 +1162,12 @@ function App({ portal }) {
             </div>
           </div>
           <div className="top-right">
-            <AdminCommand
-              nav={nav.filter(
-                ([key]) =>
-                  role === 'admin' ||
-                  (role === 'staff' && ['pos', 'orders', 'products'].includes(key))
-              )}
-              onNavigate={go}
-            />
+            <AdminCommand nav={visibleNav} onNavigate={go} />
             <AdminDate />
             <IconButton
               icon={RefreshCw}
               className="quiet"
-              onClick={() => refresh().catch(e => setError(e.message))}
+              onClick={() => sync().catch(e => setError(e.message))}
             >
               Refresh
             </IconButton>
@@ -1069,7 +1199,7 @@ function App({ portal }) {
               View shop
             </a>
             {role === 'admin' && (
-              <IconButton icon={Download} className="quiet" onClick={exportBackup}>
+              <IconButton icon={Download} className="quiet" disabled={busy} onClick={exportBackup}>
                 Export
               </IconButton>
             )}
@@ -1089,82 +1219,17 @@ function App({ portal }) {
                     ? 'COUNTER BILLING'
                     : 'STORE OPERATIONS'}
               </span>
-              <h1>
-                {
-                  {
-                    dashboard: 'A clear view of your store.',
-                    pos: 'Point of sale.',
-                    products: 'Product inventory.',
-                    orders: 'Customer orders.',
-                    purchases: 'Purchase register.',
-                    sales: 'Sales & receipts.',
-                    vendors: 'Vendor workspace.',
-                    adjustments: 'Stock adjustments.',
-                    expenses: 'Business expenses.',
-                    reports: 'Reports & insights.',
-                    customers: 'Customer accounts.',
-                    bulk: 'Bulk import.',
-                    activity: 'Activity log.',
-                    accounts: 'Team accounts.',
-                    settings: 'Store settings.',
-                  }[view]
-                }
-              </h1>
-              <p>
-                {
-                  {
-                    dashboard: 'Track every item, rupee and reorder point.',
-                    pos: 'Scan a barcode, prepare the bill and collect payment.',
-                    products: 'Every product, price, barcode and shelf in one place.',
-                    orders: 'Review pickup and delivery requests; release or fulfill stock.',
-                    purchases: 'Record received stock with invoice, vendor and expiry.',
-                    sales: 'Every checkout line and its receipt.',
-                    vendors:
-                      'Select a vendor to manage their details, products and accounts in one place.',
-                    adjustments: 'Explain every stock correction and loss.',
-                    expenses: 'Keep operating expenses visible.',
-                    reports: 'Figures calculated from recorded transactions.',
-                    accounts: 'Create staff and vendor access with limited permissions.',
-                    settings: 'Store contact details, payment accounts and account security.',
-                  }[view]
-                }
-              </p>
+              <h1>{viewTitles[view]?.[0]}</h1>
+              <p>{viewTitles[view]?.[1]}</p>
             </div>
             {view === 'dashboard' && role !== 'vendor' ? (
               <IconButton icon={ScanBarcode} className="primary" onClick={() => go('pos')}>
                 Open POS
               </IconButton>
-            ) : (role === 'admin'
-                ? ['products', 'vendors', 'purchases', 'adjustments', 'expenses']
-                : role === 'staff'
-                  ? ['adjustments']
-                  : []
-              ).includes(view) ? (
-              <IconButton
-                icon={Plus}
-                className="primary"
-                onClick={() =>
-                  open(
-                    {
-                      products: 'product',
-                      vendors: 'vendor',
-                      purchases: 'purchase',
-                      adjustments: 'adjustment',
-                      expenses: 'expense',
-                    }[view]
-                  )
-                }
-              >
-                Add{' '}
-                {
-                  {
-                    products: 'product',
-                    vendors: 'vendor',
-                    purchases: 'purchase',
-                    adjustments: 'adjustment',
-                    expenses: 'expense',
-                  }[view]
-                }
+            ) : addTypes[view] &&
+              (role === 'admin' || (role === 'staff' && view === 'adjustments')) ? (
+              <IconButton icon={Plus} className="primary" onClick={() => open(addTypes[view])}>
+                Add {addTypes[view]}
               </IconButton>
             ) : null}
           </div>
@@ -1189,9 +1254,8 @@ function App({ portal }) {
             />
           )}
           {view === 'activity' && role === 'admin' && (
-            <DataTable
+            <RecordTable
               title="Store activity · latest 150 changes"
-              count={activities.length}
               columns={['When', 'Action', 'Source', 'Record', 'ID']}
               rows={activities.map(e => (
                 <tr key={e.id}>
@@ -1227,8 +1291,8 @@ function App({ portal }) {
               orders={orders}
               onComplete={async r => {
                 setReceipt(r);
-                await refresh();
                 flash('Pickup sale closed. Receipt and rewards updated.');
+                await sync().catch(() => {});
               }}
               onError={setError}
             />
@@ -1257,6 +1321,7 @@ function App({ portal }) {
                         }
                       }}
                       placeholder="Scan barcode / SKU, then Enter"
+                      aria-label="Scan barcode or SKU"
                       autoFocus
                     />
                     <button onClick={() => scanAdd()}>Add</button>
@@ -1265,7 +1330,7 @@ function App({ portal }) {
                     USB scanners type into this field. Set the scanner suffix to Enter.
                   </div>
                   <div className="scan-tools">
-                    <button onClick={camera ? stopCamera : startCamera}>
+                    <button onClick={() => setCamera(c => !c)}>
                       <Camera size={17} />
                       {camera ? 'Stop camera' : 'Use camera'}
                     </button>
@@ -1274,7 +1339,12 @@ function App({ portal }) {
                       Focus scanner
                     </button>
                   </div>
-                  {camera && <BarcodeCamera onClose={stopCamera} onScan={code => scanAdd(code)} />}
+                  {camera && (
+                    <BarcodeCamera
+                      onClose={() => setCamera(false)}
+                      onScan={code => scanAdd(code)}
+                    />
+                  )}
                 </section>
                 <section className="card catalog-card">
                   <div className="card-title">
@@ -1290,32 +1360,26 @@ function App({ portal }) {
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder="Search name, brand, category, barcode"
+                      aria-label="Search catalog"
                     />
                   </div>
                   <div className="catalog-list">
-                    {inStock
-                      .filter(p =>
-                        (p.name + ' ' + p.barcode + ' ' + p.sku + ' ' + p.category + ' ' + p.brand)
-                          .toLowerCase()
-                          .includes(search.toLowerCase())
-                      )
-                      .slice(0, 40)
-                      .map(p => (
-                        <button className="catalog-row" key={p.id} onClick={() => add(p)}>
-                          <span className="product-avatar">
-                            <Package size={21} />
-                          </span>
-                          <span className="catalog-name">
-                            <strong>{p.name}</strong>
-                            <small>
-                              {p.category || 'Grocery'} · {p.barcode || p.sku || 'No barcode'} ·{' '}
-                              {Q(stock(p))} left
-                            </small>
-                          </span>
-                          <b>{M(p.price_paisa)}</b>
-                          <Plus size={17} />
-                        </button>
-                      ))}
+                    {quickAdd.map(p => (
+                      <button className="catalog-row" key={p.id} onClick={() => add(p)}>
+                        <span className="product-avatar">
+                          <Package size={21} />
+                        </span>
+                        <span className="catalog-name">
+                          <strong>{p.name}</strong>
+                          <small>
+                            {p.category || 'Grocery'} · {p.barcode || p.sku || 'No barcode'} ·{' '}
+                            {Q(sellable(p))} available
+                          </small>
+                        </span>
+                        <b>{M(p.price_paisa)}</b>
+                        <Plus size={17} />
+                      </button>
+                    ))}
                     {!inStock.length && (
                       <Empty text="Add products and receive stock to start billing." />
                     )}
@@ -1337,7 +1401,7 @@ function App({ portal }) {
                     className="text-btn"
                     disabled={!lines.length}
                     onClick={() => {
-                      setCart({});
+                      clearBill();
                       flash('Bill cleared.');
                     }}
                   >
@@ -1352,15 +1416,21 @@ function App({ portal }) {
                         <small>{M(p.price_paisa)} each</small>
                       </div>
                       <div className="stepper">
-                        <button onClick={() => updateCart(p.id, -1000)}>
+                        <button
+                          onClick={() => updateCart(p.id, -1000)}
+                          aria-label={'Reduce ' + p.name}
+                        >
                           <Minus size={14} />
                         </button>
                         <span>{Q(qty)}</span>
-                        <button onClick={() => updateCart(p.id, 1000)}>
+                        <button
+                          onClick={() => updateCart(p.id, 1000)}
+                          aria-label={'Increase ' + p.name}
+                        >
                           <Plus size={14} />
                         </button>
                       </div>
-                      <b>{M(Math.round((qty * Number(p.price_paisa)) / 1000))}</b>
+                      <b>{M(lineTotalPaisa(qty, p.price_paisa))}</b>
                     </div>
                   ))}
                   {!lines.length && (
@@ -1378,14 +1448,14 @@ function App({ portal }) {
                       aria-label="Registered customer"
                       value={bill.customerId || ''}
                       onChange={e => {
-                        let id = e.target.value,
+                        const id = e.target.value,
                           c = customers.find(x => x.id === id);
-                        setBill({
-                          ...bill,
+                        setBill(b => ({
+                          ...b,
                           customerId: id,
                           customer: c?.name || '',
                           redeemPoints: 0,
-                        });
+                        }));
                         loadCustomer(id);
                       }}
                     >
@@ -1401,7 +1471,7 @@ function App({ portal }) {
                     Customer name
                     <input
                       value={bill.customer}
-                      onChange={e => setBill({ ...bill, customer: e.target.value })}
+                      onChange={e => setBill(b => ({ ...b, customer: e.target.value }))}
                       placeholder="Walk-in customer"
                     />
                   </label>
@@ -1413,7 +1483,9 @@ function App({ portal }) {
                         Redeem points
                         <select
                           value={bill.redeemPoints || 0}
-                          onChange={e => setBill({ ...bill, redeemPoints: Number(e.target.value) })}
+                          onChange={e =>
+                            setBill(b => ({ ...b, redeemPoints: Number(e.target.value) }))
+                          }
                         >
                           {Array.from(
                             {
@@ -1441,7 +1513,7 @@ function App({ portal }) {
                     <select
                       aria-label="Payment method"
                       value={bill.payment}
-                      onChange={e => setBill({ ...bill, payment: e.target.value })}
+                      onChange={e => setBill(b => ({ ...b, payment: e.target.value }))}
                     >
                       {['Cash', 'Card', 'Bank transfer', 'Credit'].map(x => (
                         <option key={x}>{x}</option>
@@ -1455,19 +1527,38 @@ function App({ portal }) {
                       min="0"
                       step="0.01"
                       value={bill.discount}
-                      onChange={e => setBill({ ...bill, discount: e.target.value })}
+                      onChange={e => setBill(b => ({ ...b, discount: e.target.value }))}
+                      placeholder="0"
                     />
+                    {role !== 'admin' && (
+                      <small>Staff discounts are limited; the owner can approve larger ones.</small>
+                    )}
                   </label>
-                  <label>
-                    Tax (Rs)
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={bill.tax}
-                      onChange={e => setBill({ ...bill, tax: e.target.value })}
-                    />
-                  </label>
+                  {discount > 0 && (
+                    <label>
+                      Discount reason *
+                      <input
+                        value={bill.discountReason}
+                        onChange={e => setBill(b => ({ ...b, discountReason: e.target.value }))}
+                        placeholder="e.g. damaged pack, promotion"
+                        maxLength={200}
+                        required
+                      />
+                    </label>
+                  )}
+                  {role === 'admin' && (
+                    <label>
+                      Tax override (Rs, optional)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={bill.tax}
+                        onChange={e => setBill(b => ({ ...b, tax: e.target.value }))}
+                        placeholder="Calculated from product rates"
+                      />
+                    </label>
+                  )}
                   <label>
                     Received (Rs)
                     <input
@@ -1475,7 +1566,7 @@ function App({ portal }) {
                       min="0"
                       step="0.01"
                       value={bill.received}
-                      onChange={e => setBill({ ...bill, received: e.target.value })}
+                      onChange={e => setBill(b => ({ ...b, received: e.target.value }))}
                       placeholder="Exact amount"
                     />
                   </label>
@@ -1483,7 +1574,7 @@ function App({ portal }) {
                     Reference
                     <input
                       value={bill.note}
-                      onChange={e => setBill({ ...bill, note: e.target.value })}
+                      onChange={e => setBill(b => ({ ...b, note: e.target.value }))}
                       placeholder="Optional"
                     />
                   </label>
@@ -1504,8 +1595,10 @@ function App({ portal }) {
                     </div>
                   )}
                   <div>
-                    <span>Tax</span>
-                    <b>{M(tax)}</b>
+                    <span>
+                      Tax{taxOverride === null && role !== 'admin' ? ' (final at checkout)' : ''}
+                    </span>
+                    <b>{M(taxEstimate)}</b>
                   </div>
                   <div className="grand">
                     <span>Amount due</span>
@@ -1525,7 +1618,7 @@ function App({ portal }) {
                   Complete sale
                 </button>
                 <p className="checkout-note">
-                  Stock is checked again on the server before the sale is saved.
+                  Stock, prices and tax are checked again on the server before the sale is saved.
                 </p>
                 {bill.customerId && (
                   <CreditCollection
@@ -1556,50 +1649,42 @@ function App({ portal }) {
               vendors={data.vendors}
               onEdit={p => open('product', p)}
               onImage={uploadPicture}
-              onRefresh={refresh}
+              onRefresh={sync}
               stock={stock}
               onReceive={receiveStock}
             />
           )}
           {view === 'products' && role !== 'admin' && (
-            <DataTable
+            <RecordTable
               title="All products"
-              count={data.products.length}
               search={query}
               setSearch={setQuery}
               filter={filter}
               setFilter={setFilter}
               filters={['all', 'low', 'available']}
-              columns={
-                role === 'staff'
-                  ? [
-                      'Product',
-                      'SKU / Barcode',
-                      'Category / Shelf',
-                      'In stock',
-                      'Reorder',
-                      'Sell price',
-                      '',
-                    ]
-                  : [
-                      'Product',
-                      'SKU / Barcode',
-                      'Category / Shelf',
-                      'In stock',
-                      'Reorder',
-                      'Cost',
-                      'Sell price',
-                      '',
-                    ]
-              }
+              columns={[
+                'Product',
+                'SKU / Barcode',
+                'Category / Shelf',
+                'In stock',
+                'Reserved',
+                'Reorder',
+                'Sell price',
+              ]}
               rows={data.products
-                .filter(p =>
-                  (p.name + ' ' + p.sku + ' ' + p.barcode + ' ' + p.brand)
-                    .toLowerCase()
-                    .includes(query.toLowerCase())
+                .filter(
+                  p =>
+                    !p.deleted_at &&
+                    (p.name + ' ' + p.sku + ' ' + p.barcode + ' ' + p.brand)
+                      .toLowerCase()
+                      .includes(query.toLowerCase())
                 )
                 .filter(p =>
-                  filter === 'low' ? low.includes(p) : filter === 'available' ? stock(p) > 0 : true
+                  filter === 'low'
+                    ? low.includes(p)
+                    : filter === 'available'
+                      ? sellable(p) > 0
+                      : true
                 )
                 .map(p => (
                   <tr key={p.id}>
@@ -1623,40 +1708,18 @@ function App({ portal }) {
                     <td>
                       <Badge warn={stock(p) <= Number(p.reorder_milli)}>{Q(stock(p))}</Badge>
                     </td>
+                    <td>{reserved(p) ? Q(reserved(p)) : '—'}</td>
                     <td>{Q(p.reorder_milli)}</td>
-                    {role !== 'staff' && <td>{M(p.cost_paisa)}</td>}
                     <td>
                       <strong>{M(p.price_paisa)}</strong>
-                    </td>
-                    <td>
-                      {role === 'admin' && (
-                        <>
-                          <button className="text-btn" onClick={() => open('product', p)}>
-                            Edit
-                          </button>
-                          <label className="text-btn picture-button">
-                            Image
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              hidden
-                              onChange={e => {
-                                uploadPicture(p.id, e.target.files?.[0]);
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                        </>
-                      )}
                     </td>
                   </tr>
                 ))}
             />
           )}
           {view === 'purchases' && (
-            <DataTable
+            <RecordTable
               title="Stock received"
-              count={data.purchases.length}
               columns={[
                 'Date',
                 'Product',
@@ -1684,9 +1747,7 @@ function App({ portal }) {
                   </td>
                   <td>{M(x.unit_cost_paisa)}</td>
                   <td>
-                    <strong>
-                      {M(Math.round((Number(x.qty_milli) * Number(x.unit_cost_paisa)) / 1000))}
-                    </strong>
+                    <strong>{M(lineTotalPaisa(x.qty_milli, x.unit_cost_paisa))}</strong>
                   </td>
                   <td>
                     <Badge warn={x.payment === 'Unpaid'}>{x.payment}</Badge>
@@ -1694,7 +1755,7 @@ function App({ portal }) {
                       Paid now:{' '}
                       {M(
                         x.payment === 'Paid'
-                          ? Math.round((Number(x.qty_milli) * Number(x.unit_cost_paisa)) / 1000)
+                          ? lineTotalPaisa(x.qty_milli, x.unit_cost_paisa)
                           : x.paid_paisa
                       )}
                     </small>
@@ -1714,10 +1775,9 @@ function App({ portal }) {
                   : [['items', 'Product sales']]
               }
             >
-              {role === 'admin' && <DailySales />}
-              <DataTable
+              {role === 'admin' && <DailySales refreshToken={refreshToken} />}
+              <RecordTable
                 title="Sales line items"
-                count={data.sales.length}
                 columns={[
                   'Date / receipt',
                   'Product',
@@ -1748,7 +1808,11 @@ function App({ portal }) {
               />
             </SectionSwitcher>
           )}
-          {view === 'bulk' && role === 'admin' && <BulkImport onImported={refresh} />}
+          {view === 'bulk' && role === 'admin' && (
+            <Suspense fallback={<p>Loading importer…</p>}>
+              <BulkImport onImported={sync} />
+            </Suspense>
+          )}
           {view === 'customers' && role === 'admin' && (
             <CustomersWorkspace
               customers={customers}
@@ -1770,35 +1834,34 @@ function App({ portal }) {
             />
           )}
           {view === 'vendors' && role === 'admin' && (
-            <VendorManagement
-              vendors={data.vendors}
-              purchases={data.purchases}
-              products={data.products}
-              sales={data.sales}
-              accounts={accounts}
-              onEditVendor={v => open('vendor', v)}
-              onApproved={async () => {
-                await refresh();
-                await loadAccounts();
-              }}
-              renderCatalog={v => (
-                <AdminCatalog
-                  key={v.id}
-                  products={data.products.filter(p => p.vendor_id === v.id)}
-                  vendors={[v]}
-                  onEdit={p => open('product', p)}
-                  onImage={uploadPicture}
-                  onRefresh={refresh}
-                  stock={stock}
-                  onReceive={receiveStock}
-                />
-              )}
-            />
+            <Suspense fallback={<p>Loading vendor workspace…</p>}>
+              <VendorManagement
+                vendors={data.vendors}
+                products={data.products}
+                accounts={accounts}
+                onEditVendor={v => open('vendor', v)}
+                onChanged={async () => {
+                  await sync().catch(() => {});
+                  await loadAccounts().catch(() => {});
+                }}
+                renderCatalog={v => (
+                  <AdminCatalog
+                    key={v.id}
+                    products={data.products.filter(p => p.vendor_id === v.id)}
+                    vendors={[v]}
+                    onEdit={p => open('product', p)}
+                    onImage={uploadPicture}
+                    onRefresh={sync}
+                    stock={stock}
+                    onReceive={receiveStock}
+                  />
+                )}
+              />
+            </Suspense>
           )}
           {view === 'adjustments' && (
-            <DataTable
+            <RecordTable
               title="Stock movement corrections"
-              count={data.adjustments.length}
               columns={['Date', 'Product', 'Reason', 'Change', 'Explanation']}
               rows={data.adjustments.map(x => (
                 <tr key={x.id}>
@@ -1819,9 +1882,8 @@ function App({ portal }) {
             />
           )}
           {view === 'expenses' && (
-            <DataTable
+            <RecordTable
               title="Operating costs"
-              count={data.expenses.length}
               columns={['Date', 'Category', 'Description', 'Amount', 'Payment', 'Reference']}
               rows={data.expenses.map(x => (
                 <tr key={x.id}>
@@ -1845,29 +1907,43 @@ function App({ portal }) {
               accounts={accounts}
               vendors={data.vendors}
               onCreate={async f => {
-                let r = await action('/accounts', 'POST', f);
+                const r = await action('/accounts', 'POST', f);
                 if (r) await loadAccounts();
                 return r;
               }}
               onToggle={async a => {
-                let r = await action('/accounts/' + a.id, 'PATCH', { active: !a.active });
+                const r = await action('/accounts/' + seg(a.id), 'PATCH', { active: !a.active });
                 if (r) await loadAccounts();
                 return r;
               }}
             />
           )}
-          {view === 'reports' && <Reports data={data} low={low} stock={stock} product={product} />}
+          {view === 'reports' && role === 'admin' && (
+            <Reports
+              products={data.products}
+              purchases={data.purchases}
+              low={low}
+              stock={stock}
+              refreshToken={refreshToken}
+            />
+          )}
         </main>
       </div>
-      <Toaster position="bottom-right" richColors closeButton visibleToasts={1} duration={2600} />
+      <Toaster position="bottom-right" richColors closeButton visibleToasts={2} duration={2600} />
       <Dialog
         open={!!modal}
-        onOpenChange={open => {
-          if (!open && !busy) setModal(null);
+        onOpenChange={isOpen => {
+          if (!isOpen && !busy) setModal(null);
         }}
       >
         {modal && (
-          <DialogContent className="sm-record-dialog" showCloseButton={false}>
+          <DialogContent
+            className="sm-record-dialog"
+            showCloseButton={false}
+            onEscapeKeyDown={e => {
+              if (document.querySelector('.sm-barcode-overlay')) e.preventDefault();
+            }}
+          >
             <DialogTitle className="sr-only">
               {form.id ? 'Edit' : 'Add'} {modal}
             </DialogTitle>
@@ -1877,7 +1953,7 @@ function App({ portal }) {
             <form className="modal" onSubmit={submit}>
               <div className="modal-head">
                 <div>
-                  <span className="eyebrow">STAR MART / NEW RECORD</span>
+                  <span className="eyebrow">STAR MART / {form.id ? 'EDIT' : 'NEW'} RECORD</span>
                   <h2>
                     {form.id ? 'Edit' : 'Add'} {modal}
                   </h2>
@@ -1897,212 +1973,57 @@ function App({ portal }) {
                   onChange={code => setForm(prev => ({ ...prev, barcode: code }))}
                 />
               )}
+              {modal === 'product' && form.vendor_proposed_price_paisa != null && (
+                <p className="aw-note">
+                  Vendor proposed a new selling price of {M(form.vendor_proposed_price_paisa)}.
+                  Review it from the product list.
+                </p>
+              )}
               <div className="aw-form-groups">
-                {recordGroups[modal].map(group =>
-                  group.extra ? (
+                {recordGroups[modal].map(group => {
+                  const groupFields = group.keys
+                    .map(key => fields[modal].find(f => f[0] === key))
+                    .filter(Boolean)
+                    .filter(
+                      ([key]) =>
+                        !(form.id && modal === 'product' && key === 'opening') &&
+                        !(modal === 'purchase' && key === 'paid' && form.payment !== 'Part paid')
+                    );
+                  const body = (
+                    <div className="modal-fields">
+                      {groupFields.map(field => (
+                        <RecordField
+                          key={field[0]}
+                          field={field}
+                          form={form}
+                          setForm={setForm}
+                          modal={modal}
+                          products={data.products}
+                          vendors={data.vendors}
+                          stock={stock}
+                          product={product}
+                        />
+                      ))}
+                    </div>
+                  );
+                  return group.extra ? (
                     <details className="aw-form-group" key={group.title}>
                       <summary>{group.title}</summary>
-                      <div className="modal-fields">
-                        {group.keys
-                          .map(key => fields[modal].find(f => f[0] === key))
-                          .filter(Boolean)
-                          .filter(
-                            ([key]) =>
-                              !(form.id && modal === 'product' && key === 'opening') &&
-                              !(
-                                modal === 'purchase' &&
-                                key === 'paid' &&
-                                form.payment !== 'Part paid'
-                              )
-                          )
-                          .map(([key, label, type = 'text', required = false, options]) => (
-                            <label key={key}>
-                              {label}
-                              {required && ' *'}
-                              {type === 'select' ? (
-                                <select
-                                  aria-label={label}
-                                  required={required}
-                                  value={form[key] ?? options[0]}
-                                  onChange={e => setForm({ ...form, [key]: e.target.value })}
-                                >
-                                  {(key === 'category' &&
-                                  modal === 'product' &&
-                                  form.category &&
-                                  !options.includes(form.category)
-                                    ? [...options, form.category]
-                                    : options
-                                  ).map(x => (
-                                    <option key={x}>{x}</option>
-                                  ))}
-                                </select>
-                              ) : type === 'product' || type === 'vendor' ? (
-                                <select
-                                  aria-label={label}
-                                  required={required}
-                                  value={form[key] ?? ''}
-                                  onChange={e => {
-                                    let v = e.target.value;
-                                    setForm({
-                                      ...form,
-                                      [key]: v,
-                                      ...(key === 'productId' && modal === 'purchase'
-                                        ? {
-                                            cost: Number(product(v)?.cost_paisa || 0) / 100,
-                                            vendorId: product(v)?.vendor_id || '',
-                                          }
-                                        : {}),
-                                    });
-                                  }}
-                                >
-                                  <option value="">
-                                    {type === 'product' ? 'Select product' : 'No vendor selected'}
-                                  </option>
-                                  {(type === 'product'
-                                    ? data.products.filter(
-                                        p => !p.deleted_at && p.catalog_status !== 'archived'
-                                      )
-                                    : data.vendors
-                                  ).map(x => (
-                                    <option value={x.id} key={x.id}>
-                                      {x.name}
-                                      {type === 'product' ? ' (' + Q(stock(x)) + ' in stock)' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <input
-                                  aria-label={label}
-                                  type={type}
-                                  min={type === 'number' && key !== 'change' ? 0 : undefined}
-                                  step={
-                                    type === 'number'
-                                      ? [
-                                          'opening',
-                                          'vendorAvailable',
-                                          'qty',
-                                          'change',
-                                          'reorder',
-                                          'reorderQty',
-                                        ].includes(key)
-                                        ? '1'
-                                        : '0.01'
-                                      : undefined
-                                  }
-                                  required={required}
-                                  value={form[key] ?? ''}
-                                  onChange={e => setForm({ ...form, [key]: e.target.value })}
-                                  placeholder={key === 'change' ? 'e.g. -2 or 3' : ''}
-                                />
-                              )}
-                            </label>
-                          ))}
-                      </div>
+                      {body}
                     </details>
                   ) : (
                     <fieldset className="aw-form-group" key={group.title}>
                       <legend>{group.title}</legend>
-                      <div className="modal-fields">
-                        {group.keys
-                          .map(key => fields[modal].find(f => f[0] === key))
-                          .filter(Boolean)
-                          .filter(
-                            ([key]) =>
-                              !(form.id && modal === 'product' && key === 'opening') &&
-                              !(
-                                modal === 'purchase' &&
-                                key === 'paid' &&
-                                form.payment !== 'Part paid'
-                              )
-                          )
-                          .map(([key, label, type = 'text', required = false, options]) => (
-                            <label key={key}>
-                              {label}
-                              {required && ' *'}
-                              {type === 'select' ? (
-                                <select
-                                  aria-label={label}
-                                  required={required}
-                                  value={form[key] ?? options[0]}
-                                  onChange={e => setForm({ ...form, [key]: e.target.value })}
-                                >
-                                  {(key === 'category' &&
-                                  modal === 'product' &&
-                                  form.category &&
-                                  !options.includes(form.category)
-                                    ? [...options, form.category]
-                                    : options
-                                  ).map(x => (
-                                    <option key={x}>{x}</option>
-                                  ))}
-                                </select>
-                              ) : type === 'product' || type === 'vendor' ? (
-                                <select
-                                  aria-label={label}
-                                  required={required}
-                                  value={form[key] ?? ''}
-                                  onChange={e => {
-                                    let v = e.target.value;
-                                    setForm({
-                                      ...form,
-                                      [key]: v,
-                                      ...(key === 'productId' && modal === 'purchase'
-                                        ? {
-                                            cost: Number(product(v)?.cost_paisa || 0) / 100,
-                                            vendorId: product(v)?.vendor_id || '',
-                                          }
-                                        : {}),
-                                    });
-                                  }}
-                                >
-                                  <option value="">
-                                    {type === 'product' ? 'Select product' : 'No vendor selected'}
-                                  </option>
-                                  {(type === 'product'
-                                    ? data.products.filter(
-                                        p => !p.deleted_at && p.catalog_status !== 'archived'
-                                      )
-                                    : data.vendors
-                                  ).map(x => (
-                                    <option value={x.id} key={x.id}>
-                                      {x.name}
-                                      {type === 'product' ? ' (' + Q(stock(x)) + ' in stock)' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <input
-                                  aria-label={label}
-                                  type={type}
-                                  min={type === 'number' && key !== 'change' ? 0 : undefined}
-                                  step={
-                                    type === 'number'
-                                      ? [
-                                          'opening',
-                                          'vendorAvailable',
-                                          'qty',
-                                          'change',
-                                          'reorder',
-                                          'reorderQty',
-                                        ].includes(key)
-                                        ? '1'
-                                        : '0.01'
-                                      : undefined
-                                  }
-                                  required={required}
-                                  value={form[key] ?? ''}
-                                  onChange={e => setForm({ ...form, [key]: e.target.value })}
-                                  placeholder={key === 'change' ? 'e.g. -2 or 3' : ''}
-                                />
-                              )}
-                            </label>
-                          ))}
-                      </div>
+                      {body}
                     </fieldset>
-                  )
-                )}
+                  );
+                })}
               </div>
-              {error && <div className="error">{error}</div>}
+              {modalError && (
+                <div className="error" role="alert">
+                  {modalError}
+                </div>
+              )}
               <div className="modal-foot">
                 <button
                   type="button"
@@ -2140,9 +2061,9 @@ function App({ portal }) {
             {legacyImport?.name}. This import only works when the database is empty. Existing store
             records will not be overwritten.
           </DialogDescription>
-          {error && (
+          {modalError && (
             <p className="aw-error" role="alert">
-              {error}
+              {modalError}
             </p>
           )}
           <div className="aw-actions">
@@ -2159,16 +2080,21 @@ function App({ portal }) {
         <div
           className="overlay"
           onMouseDown={e => {
-            if (e.target === e.currentTarget) setLinkOpen(false);
+            if (e.target === e.currentTarget && !busy) setLinkOpen(false);
           }}
         >
-          <div className="receipt-modal admin-link-modal">
-            <h2>Link admin sign-in</h2>
+          <div
+            className="receipt-modal admin-link-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="link-title"
+          >
+            <h2 id="link-title">Link admin sign-in</h2>
             <p>
               Only the current owner can link a verified Google or mobile account. Once linked, it
               can sign in without the owner password.
             </p>
-            <button className="quiet" onClick={() => adminGoogle(true)}>
+            <button className="quiet" disabled={busy} onClick={() => adminGoogle(true)}>
               Link Google account
             </button>
             <label>
@@ -2186,18 +2112,23 @@ function App({ portal }) {
                   value={adminCode}
                   onChange={e => setAdminCode(e.target.value)}
                   placeholder="SMS code"
+                  aria-label="SMS code"
                 />
-                <button className="quiet" onClick={() => adminPhoneVerify(true)}>
+                <button className="quiet" disabled={busy} onClick={() => adminPhoneVerify(true)}>
                   Verify and link mobile
                 </button>
               </>
             ) : (
-              <button className="quiet" onClick={adminPhoneSend}>
+              <button className="quiet" disabled={busy} onClick={adminPhoneSend}>
                 Send mobile code
               </button>
             )}
-            {error && <div className="error">{error}</div>}
-            <button className="quiet" onClick={() => setLinkOpen(false)}>
+            {error && (
+              <div className="error" role="alert">
+                {error}
+              </div>
+            )}
+            <button className="quiet" disabled={busy} onClick={() => setLinkOpen(false)}>
               Close
             </button>
           </div>
@@ -2212,7 +2143,9 @@ function App({ portal }) {
         {receipt && (
           <DialogContent className="aw-dialog aw-success">
             <CircleCheck size={48} color="#00745c" />
-            <DialogTitle>Sale completed</DialogTitle>
+            <DialogTitle>
+              {receipt.replayed ? 'Sale already recorded' : 'Sale completed'}
+            </DialogTitle>
             <DialogDescription>
               {receipt.receipt} · {receipt.customer}
             </DialogDescription>
@@ -2221,7 +2154,9 @@ function App({ portal }) {
               <strong>{M(receipt.total)}</strong>
             </div>
             <div className="aw-note">
-              Receipt saved. Stock, sales and eligible customer rewards have updated.
+              {receipt.replayed
+                ? 'This bill was already saved by an earlier attempt. Nothing was charged twice.'
+                : 'Receipt saved. Stock, sales and eligible customer rewards have updated.'}
             </div>
             <div className="aw-actions">
               <IconButton icon={Printer} className="primary" onClick={() => printReceipt()}>
@@ -2243,303 +2178,26 @@ function App({ portal }) {
     </div>
   );
 }
-function Badge({ children, warn }) {
-  return (
-    <UiBadge variant={warn ? 'outline' : 'secondary'} className={'badge ' + (warn ? 'warn' : '')}>
-      {children}
-    </UiBadge>
-  );
-}
-function Empty({ text }) {
-  return (
-    <div className="empty">
-      <Package size={30} />
-      <span>{text || 'No records yet. Add your first entry to get started.'}</span>
-    </div>
-  );
-}
-function DataTable(props) {
-  return <RecordTable {...props} />;
-}
-function Dashboard({ data, low, go, stock }) {
-  let today = pakistanDay(Date.now()),
-    todaySales =
-      data.todaySalesPaisa ??
-      data.receipts
-        .filter(x => pakistanDay(x.created_at) === today)
-        .reduce((n, x) => n + Number(x.total_paisa), 0),
-    value = data.products.reduce(
-      (n, p) => n + Math.round((stock(p) * Number(p.cost_paisa)) / 1000),
-      0
-    ),
-    revenue = data.receipts.reduce((n, x) => n + Number(x.total_paisa), 0),
-    expenses = data.expenses.reduce((n, x) => n + Number(x.amount_paisa), 0),
-    unpaid = data.purchases
-      .filter(x => x.payment === 'Unpaid')
-      .reduce(
-        (n, x) => n + Math.round((Number(x.qty_milli) * Number(x.unit_cost_paisa)) / 1000),
-        0
-      ),
-    sold = new Map();
-  data.sales.forEach(x =>
-    sold.set(x.product_id, (sold.get(x.product_id) || 0) + Number(x.qty_milli))
-  );
-  let ranked = [...sold].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  let metrics = [
-    ['Today’s sales', M(todaySales), 'Recorded today', Wallet, 'green'],
-    ['Stock at cost', M(value), 'Current quantity × cost', Boxes, 'blue'],
-    ['Low stock items', low.length, 'At or below reorder level', AlertTriangle, 'orange'],
-    ['Total sales', M(revenue), 'All completed receipts', ShoppingBag, 'violet'],
-  ];
-  return (
-    <>
-      <div className="metric-grid">
-        {metrics.map(([name, val, desc, Icon, tone]) => (
-          <article className="metric-card" key={name}>
-            <div className="metric-head">
-              <span>{name}</span>
-              <div className={'metric-icon ' + tone}>
-                <Icon size={21} />
-              </div>
-            </div>
-            <strong>{val}</strong>
-            <small>{desc}</small>
-          </article>
-        ))}
-      </div>
-      <div className="insight-strip">
-        <span>
-          <b>{data.products.length}</b> products
-        </span>
-        <span>
-          <b>{Q(data.products.reduce((n, p) => n + stock(p), 0))}</b> units in stock
-        </span>
-        <span>
-          <b>{M(unpaid)}</b> supplier invoices marked unpaid
-        </span>
-        <span>
-          <b>{M(expenses)}</b> recorded expenses
-        </span>
-      </div>
-      <div className="two-cols">
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">ACTION NEEDED</span>
-              <h2>Reorder watchlist</h2>
-            </div>
-            <button className="text-btn" onClick={() => go('products')}>
-              View inventory <ChevronRight size={16} />
-            </button>
-          </div>
-          {low.length ? (
-            low.slice(0, 6).map(p => (
-              <div className="watch-row" key={p.id}>
-                <span className="product-avatar">
-                  <Package size={20} />
-                </span>
-                <div>
-                  <strong>{p.name}</strong>
-                  <small>
-                    Reorder at {Q(p.reorder_milli)} {p.unit}
-                  </small>
-                </div>
-                <Badge warn>{Q(stock(p))} left</Badge>
-              </div>
-            ))
-          ) : (
-            <Empty text="Stock levels are above their reorder points." />
-          )}
-        </section>
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">LATEST ACTIVITY</span>
-              <h2>Recent receipts</h2>
-            </div>
-            <button className="text-btn" onClick={() => go('sales')}>
-              All sales <ChevronRight size={16} />
-            </button>
-          </div>
-          {data.receipts.length ? (
-            data.receipts.slice(0, 6).map(r => (
-              <div className="activity-row" key={r.id}>
-                <div className="activity-icon">
-                  <ArrowUpRight size={17} />
-                </div>
-                <div>
-                  <strong>{r.id}</strong>
-                  <small>
-                    {r.customer} · {date(r.created_at)}
-                  </small>
-                </div>
-                <b>{M(r.total_paisa)}</b>
-              </div>
-            ))
-          ) : (
-            <Empty text="Completed sales will appear here." />
-          )}
-        </section>
-      </div>
-      <div className="two-cols">
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">PRODUCT PERFORMANCE</span>
-              <h2>Best sellers</h2>
-            </div>
-          </div>
-          {ranked.length ? (
-            ranked.map(([id, qty], i) => (
-              <div className="rank-row" key={id}>
-                <span>{String(i + 1).padStart(2, '0')}</span>
-                <strong>{data.products.find(p => p.id === id)?.name || 'Historical item'}</strong>
-                <b>{Q(qty)} sold</b>
-              </div>
-            ))
-          ) : (
-            <Empty text="Product rankings start after the first sale." />
-          )}
-        </section>
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">STORE PULSE</span>
-              <h2>Operations snapshot</h2>
-            </div>
-          </div>
-          {[
-            ['Out of stock', data.products.filter(p => stock(p) <= 0).length],
-            ['Vendors', data.vendors.length],
-            ['Purchase entries', data.purchases.length],
-            ['Stock corrections', data.adjustments.length],
-          ].map(([label, n]) => (
-            <div className="pulse-row" key={label}>
-              <span>{label}</span>
-              <b>{n}</b>
-            </div>
-          ))}
-        </section>
-      </div>
-    </>
-  );
-}
-function Reports({ data, low, stock, product }) {
-  let inventory = data.products.reduce(
-      (n, p) => n + Math.round((stock(p) * Number(p.cost_paisa)) / 1000),
-      0
-    ),
-    sales = data.sales.reduce((n, x) => n + Number(x.line_total_paisa), 0),
-    cogs = data.sales.reduce(
-      (n, x) => n + Math.round((Number(x.qty_milli) * Number(x.cost_at_sale_paisa)) / 1000),
-      0
-    ),
-    expenses = data.expenses.reduce((n, x) => n + Number(x.amount_paisa), 0),
-    expiring = data.purchases.filter(
-      x => x.expiry && new Date(x.expiry).getTime() - Date.now() <= 30 * 864e5
-    );
-  let summary = [
-    ['Stock valuation', inventory, 'At last recorded cost'],
-    ['Sales revenue', sales, 'Completed sales, net of discounts plus tax'],
-    ['Estimated gross margin', sales - cogs, 'Revenue minus recorded item cost'],
-    ['Expenses', expenses, 'Recorded operating costs'],
-    ['Estimated result', sales - cogs - expenses, 'Before unrecorded costs and tax obligations'],
-  ];
-  return (
-    <>
-      <div className="report-grid">
-        {summary.map(([label, n, desc]) => (
-          <article className="report-card" key={label}>
-            <span>{label}</span>
-            <strong>{M(n)}</strong>
-            <small>{desc}</small>
-          </article>
-        ))}
-      </div>
-      <div className="two-cols">
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">REORDER</span>
-              <h2>Items to buy</h2>
-            </div>
-          </div>
-          {low.length ? (
-            low.map(p => (
-              <div className="watch-row" key={p.id}>
-                <span className="product-avatar">
-                  <Package size={18} />
-                </span>
-                <div>
-                  <strong>{p.name}</strong>
-                  <small>
-                    {p.location || 'No shelf'} · reorder {Q(p.reorder_qty_milli)}
-                  </small>
-                </div>
-                <Badge warn>
-                  {Q(stock(p))} / {Q(p.reorder_milli)}
-                </Badge>
-              </div>
-            ))
-          ) : (
-            <Empty text="Nothing needs reordering." />
-          )}
-        </section>
-        <section className="card">
-          <div className="card-title">
-            <div>
-              <span className="eyebrow">DATE TRACKING</span>
-              <h2>Expiring purchase batches</h2>
-            </div>
-          </div>
-          {expiring.length ? (
-            expiring.slice(0, 15).map(x => (
-              <div className="watch-row" key={x.id}>
-                <span className="product-avatar">
-                  <CalendarDays size={18} />
-                </span>
-                <div>
-                  <strong>
-                    {product(x.product_id)?.name || 'Product'} · {x.batch || 'No batch'}
-                  </strong>
-                  <small>
-                    Purchased {Q(x.qty_milli)} · expiry {String(x.expiry).slice(0, 10)}
-                  </small>
-                </div>
-                <Badge warn>Check</Badge>
-              </div>
-            ))
-          ) : (
-            <Empty text="No dated purchases expiring in 30 days." />
-          )}
-          <p className="report-foot">
-            Expiry is based on purchase dates. Sales are not allocated to individual batches; verify
-            remaining quantities physically.
-          </p>
-        </section>
-      </div>
-      <p className="report-foot">
-        These are management estimates. Supplier balances are shown in Vendors → Payments & credit,
-        including part payments and return credits.
-      </p>
-    </>
-  );
-}
+
 const path = location.pathname.replace(/\/$/, '') || '/';
+const portalMatch = path.match(/^\/(admin|staff|vendor)(?:\/[a-z-]+)?$/);
+const page = ['/about', '/contact', '/contact-us'].includes(path) ? (
+  <StorePage kind={path === '/about' ? 'about' : 'contact'} />
+) : ['/forgot-password', '/reset-password'].includes(path) ? (
+  <PasswordHelp />
+) : path === '/account' ? (
+  <CustomerDashboard />
+) : path === '/signup' || path === '/login' ? (
+  <CustomerAuth initialMode={path === '/login' ? 'login' : 'signup'} />
+) : path === '/become-a-vendor' ? (
+  <VendorApply />
+) : ['/', '/shop'].includes(path) ? (
+  <Shop />
+) : portalMatch ? (
+  <App portal={portalMatch[1]} />
+) : (
+  <NotFound />
+);
 createRoot(document.getElementById('root')).render(
-  ['/about', '/contact', '/contact-us'].includes(path) ? (
-    <StorePage kind={path === '/about' ? 'about' : 'contact'} />
-  ) : ['/forgot-password', '/reset-password'].includes(path) ? (
-    <PasswordHelp />
-  ) : path === '/account' ? (
-    <CustomerDashboard />
-  ) : path === '/signup' || path === '/login' ? (
-    <CustomerAuth initialMode={path === '/login' ? 'login' : 'signup'} />
-  ) : path === '/become-a-vendor' ? (
-    <VendorApply />
-  ) : ['/', '/shop'].includes(path) ? (
-    <Shop initialSignup={false} />
-  ) : (
-    <App portal={path === '/staff' ? 'staff' : path === '/vendor' ? 'vendor' : 'admin'} />
-  )
+  <Suspense fallback={<div className="boot">Loading Star Mart…</div>}>{page}</Suspense>
 );

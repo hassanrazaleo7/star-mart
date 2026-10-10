@@ -14,10 +14,14 @@ const DB_ERRORS = {
 // Maps any thrown value to {status, message, extra}. Unknown errors become a generic 500 so no internals leak.
 export function describeError(e) {
   if (e?.status) {
-    const { message, status, stack, ...extra } = e;
+    const { message, status, stack: _stack, ...extra } = e;
     return { status, message, extra };
   }
   const known = DB_ERRORS[e?.code];
   if (known) return { status: known[0], message: known[1], extra: {} };
-  return { status: 500, message: 'Server error. Check database connection and server logs.', extra: {} };
+  return {
+    status: 500,
+    message: 'Server error. Check database connection and server logs.',
+    extra: {},
+  };
 }

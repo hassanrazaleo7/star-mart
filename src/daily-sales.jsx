@@ -1,18 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useLiveRefresh } from './live.js';
-export const pakistanDay = value => {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Karachi',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(value));
-  const get = t => parts.find(p => p.type === t)?.value;
-  return get('year') + '-' + get('month') + '-' + get('day');
-};
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
-export default function DailySales() {
+import { get } from './lib/api.js';
+import { formatPaisa as money, localDay, formatDateTime } from './lib/money.js';
+export const pakistanDay = localDay;
+export default function DailySales({ refreshToken = 0 }) {
   const [day, setDay] = useState(() => pakistanDay(Date.now())),
     [data, setData] = useState(null),
     [error, setError] = useState('');
@@ -21,12 +11,7 @@ export default function DailySales() {
   async function load() {
     const selectedDay = day;
     try {
-      const r = await fetch('/api/reports/daily-sales?date=' + encodeURIComponent(day), {
-          credentials: 'same-origin',
-          cache: 'no-store',
-        }),
-        j = await r.json();
-      if (!r.ok) throw Error(j.error || 'Report unavailable');
+      const j = await get('/reports/daily-sales?date=' + encodeURIComponent(day));
       if (j.day === latest.current) {
         setData(j);
         setError('');
@@ -36,10 +21,8 @@ export default function DailySales() {
     }
   }
   useEffect(() => {
-    setData(null);
     if (day) load();
-  }, [day]);
-  useLiveRefresh(load);
+  }, [day, refreshToken]);
   return (
     <section className="card">
       <div className="card-title">
@@ -94,12 +77,18 @@ export default function DailySales() {
                 {data.receipts.map(r => (
                   <tr key={r.id}>
                     <td>
-                      {new Date(r.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}
+                      {formatDateTime(r.created_at)}
                       <small>{r.id}</small>
                     </td>
                     <td>
                       {r.customer}
                       <small>{r.note}</small>
+                      {Number(r.discount_paisa) > 0 && (
+                        <small>
+                          Discount {money(r.discount_paisa)}
+                          {r.discount_reason ? ' · ' + r.discount_reason : ''}
+                        </small>
+                      )}
                     </td>
                     <td>{r.payment}</td>
                     <td>{money(r.total_paisa)}</td>

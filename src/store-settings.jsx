@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { PasswordChange, RecoveryQueue } from './account-security.jsx';
 import { WorkspaceTabs } from './admin-workflow.jsx';
 import { Button } from '@/components/ui/button';
+import { post } from './lib/api.js';
+import { loadStoreSettings } from './lib/settings.js';
 const sections = {
   store: [
     ['phone', 'Store phone'],
@@ -30,9 +32,8 @@ export default function StoreSettings() {
     setLoading(true);
     setError('');
     try {
-      let r = await fetch('/api/public/settings'),
-        j = await r.json();
-      if (!r.ok) throw Error(j.error || 'Could not load settings');
+      const j = await loadStoreSettings(true);
+      if (!Object.keys(j).length) throw Error('Could not load settings');
       setForm(j);
       setLoaded(true);
     } catch (e) {
@@ -50,14 +51,8 @@ export default function StoreSettings() {
     setMessage('');
     setError('');
     try {
-      const r = await fetch('/api/admin/settings', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(form),
-        }),
-        j = await r.json();
-      if (!r.ok) throw Error(j.error);
+      await post('/admin/settings', form);
+      loadStoreSettings(true);
       setMessage(
         tab === 'payments'
           ? 'Official payment accounts saved. Checkout will use these details.'

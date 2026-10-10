@@ -8,12 +8,18 @@ export async function sweep(c) {
   const expired = await c.query(
     "UPDATE customer_orders SET status='Cancelled',payment_status='Expired · not collected',updated_at=NOW() WHERE status IN ('Pending','Inquiry') AND expires_at IS NOT NULL AND expires_at<NOW() RETURNING id"
   );
-  for (const table of ['sessions', 'account_sessions', 'customer_sessions', 'password_reset_tokens'])
+  for (const table of [
+    'sessions',
+    'account_sessions',
+    'customer_sessions',
+    'password_reset_tokens',
+  ])
     await c.query(`DELETE FROM ${table} WHERE expires_at<NOW()`);
   await c.query("DELETE FROM auth_limits WHERE started_at<NOW()-INTERVAL '1 day'");
-  await c.query("DELETE FROM activity_events WHERE created_at<NOW()-($1::text||' days')::interval", [
-    String(ACTIVITY_RETENTION_DAYS),
-  ]);
+  await c.query(
+    "DELETE FROM activity_events WHERE created_at<NOW()-($1::text||' days')::interval",
+    [String(ACTIVITY_RETENTION_DAYS)]
+  );
   return { expiredOrders: expired.rows.map(x => x.id) };
 }
 

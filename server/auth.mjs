@@ -84,7 +84,8 @@ export const clearCookies = (req, kind = 'store') => {
   const name = kind === 'store' ? STORE : CUSTOMER,
     sameSite = kind === 'store' ? 'Strict' : 'Lax';
   const out = [serialize(name, '', true, sameSite, req)];
-  if (isSecure(req)) out.push(`${name}=; HttpOnly; SameSite=${sameSite}; Path=/; Secure; Max-Age=0`);
+  if (isSecure(req))
+    out.push(`${name}=; HttpOnly; SameSite=${sameSite}; Path=/; Secure; Max-Age=0`);
   return out;
 };
 function parseCookies(header) {

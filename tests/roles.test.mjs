@@ -42,9 +42,9 @@ test('vendor sees only own inventory, staff can bill, image upload persists', as
       (await call('/setup', 'POST', { name: 'Owner', password: 'ownerpass1' })).status,
       201
     );
-    let owner = (await call('/login', 'POST', { password: 'ownerpass1' })).headers['set-cookie'].split(
-        ';'
-      )[0],
+    let owner = (await call('/login', 'POST', { password: 'ownerpass1' })).headers[
+        'set-cookie'
+      ].split(';')[0],
       ownerCall = (p, m = 'GET', v) => call(p, m, v, owner);
     let application = await call('/vendor/apply', 'POST', {
       business: 'One',
@@ -53,9 +53,8 @@ test('vendor sees only own inventory, staff can bill, image upload persists', as
       email: 'v@example.com',
       password: 'secretpass',
     });
-    let v1 = (
-        await ownerCall('/vendor/applications/' + application.body.id + '/approve', 'POST')
-      ).body.vendorId,
+    let v1 = (await ownerCall('/vendor/applications/' + application.body.id + '/approve', 'POST'))
+        .body.vendorId,
       v2 = (await ownerCall('/vendors', 'POST', { name: 'Two' })).body.id;
     let p1 = (
       await ownerCall('/products', 'POST', {

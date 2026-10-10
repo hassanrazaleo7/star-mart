@@ -4,7 +4,9 @@ import { localDate, localDayStart } from './state.mjs';
 export async function adminOverview() {
   const c = await db();
   const [y, m, d] = localDate().split('-').map(Number);
-  const since = new Date(Date.UTC(y, m - 1, d - 29) - TIMEZONE_OFFSET_MINUTES * 60_000).toISOString();
+  const since = new Date(
+    Date.UTC(y, m - 1, d - 29) - TIMEZONE_OFFSET_MINUTES * 60_000
+  ).toISOString();
   const [sales, expenses, trend, payments, pending] = await Promise.all([
     c.query('SELECT COUNT(*)::int bills,COALESCE(SUM(total_paisa),0) total FROM receipts'),
     c.query('SELECT COALESCE(SUM(amount_paisa),0) total FROM expenses'),

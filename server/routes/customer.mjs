@@ -112,7 +112,11 @@ route('GET', '/customer/orders', { auth: 'customer' }, async ({ customer }) =>
 route(
   'POST',
   '/customer/orders',
-  { auth: 'customer', body: 'json', limit: { scope: 'order', byUser: true, max: 10, windowMinutes: 60 } },
+  {
+    auth: 'customer',
+    body: 'json',
+    limit: { scope: 'order', byUser: true, max: 10, windowMinutes: 60 },
+  },
   async ({ customer, body: b }) => ok(await placeOrder(customer, b), 201)
 );
 export { tx };

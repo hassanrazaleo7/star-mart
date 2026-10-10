@@ -1,180 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Truck,
-  Store,
-  ShieldCheck,
-  Phone,
-  MapPin,
-  Clock,
-  MessageCircle,
-} from 'lucide-react';
+import { ArrowUpRight, ShieldCheck, Phone, MapPin, Clock, MessageCircle } from 'lucide-react';
 import { whatsappNumber } from './whatsapp-order.mjs';
+import { loadStoreSettings } from './lib/settings.js';
 import './store-pages.css';
-const slides = [
-  {
-    tag: 'THE EVERYDAY EDIT',
-    title: 'Your pantry.\nPerfectly stocked.',
-    text: 'Discover groceries, household favourites and the brands you love.',
-    image: '/grocery-hero.png',
-    link: '/shop#products',
-    cta: 'Explore groceries',
-  },
-  {
-    tag: 'SHOP YOUR WAY',
-    title: 'Pick it up.\nOr bring it home.',
-    text: 'Choose self pickup or delivery, then shop available products at your pace.',
-    image: '/vendor-grocery.png',
-    link: '/shop#products',
-    cta: 'Start shopping',
-  },
-  {
-    tag: 'PARTNER WITH STAR MART',
-    title: 'Great products.\nBetter together.',
-    text: 'Bring your products to Star Mart. Apply as a vendor and manage your own catalog.',
-    image: '/grocery-hero.png',
-    link: '/become-a-vendor',
-    cta: 'Become a vendor',
-  },
-];
-export function HomeSlider() {
-  const [index, setIndex] = useState(0),
-    [paused, setPaused] = useState(false);
-  useEffect(() => {
-    if (paused || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const timer = setInterval(() => setIndex(i => (i + 1) % slides.length), 6500);
-    return () => clearInterval(timer);
-  }, [paused]);
-  const s = slides[index];
-  return (
-    <section
-      className="sm-home-slider"
-      aria-label="Star Mart highlights"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={e => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
-      }}
-    >
-      <div className="container sm-slide-layout">
-        <div className="sm-slide-copy" key={index}>
-          <span>{s.tag}</span>
-          <h1>
-            {s.title.split('\n').map((line, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <br />}
-                {line}
-              </React.Fragment>
-            ))}
-          </h1>
-          <p>{s.text}</p>
-          <a className="sm-red-link" href={s.link}>
-            {s.cta}
-            <ArrowUpRight size={18} />
-          </a>
-          <div className="sm-slider-controls">
-            <button
-              aria-label="Previous slide"
-              onClick={() => setIndex((index + slides.length - 1) % slides.length)}
-            >
-              <ChevronLeft size={18} />
-            </button>
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                aria-label={'Show slide ' + (i + 1)}
-                aria-current={index === i ? 'true' : undefined}
-                className={'sm-slide-dot ' + (index === i ? 'active' : '')}
-                onClick={() => setIndex(i)}
-              />
-            ))}
-            <button aria-label="Next slide" onClick={() => setIndex((index + 1) % slides.length)}>
-              <ChevronRight size={18} />
-            </button>
-            <button className="sm-pause" onClick={() => setPaused(!paused)}>
-              {paused ? 'Play' : 'Pause'}
-            </button>
-          </div>
-        </div>
-        <div className="sm-slide-photo">
-          <img
-            src={s.image}
-            alt={
-              index === 2
-                ? 'Packaged groceries for Star Mart vendors'
-                : 'Grocery essentials at Star Mart'
-            }
-          />
-          <span>STAR MART · HOUSE OF GROCERIES</span>
-        </div>
-      </div>
-    </section>
-  );
-}
-export function HomePromotions() {
-  return (
-    <section className="container sm-promotions">
-      <div className="sm-promotions-heading">
-        <div>
-          <span>MORE TO EXPLORE</span>
-          <h2>Good picks for every day.</h2>
-        </div>
-        <a href="/shop#products">
-          Browse the store <ArrowUpRight size={17} />
-        </a>
-      </div>
-      <div className="sm-promo-grid">
-        <a href="/shop#products" className="sm-promo-tile">
-          <img src="/grocery-hero.png" alt="Everyday grocery collection" loading="lazy" />
-          <div>
-            <small>THE PANTRY COLLECTION</small>
-            <h3>Essentials, all together.</h3>
-            <span>
-              Shop available products <ArrowUpRight size={17} />
-            </span>
-          </div>
-        </a>
-        <a href="/account" className="sm-promo-tile sm-promo-loyalty">
-          <div>
-            <small>HAPPY STAR REWARDS</small>
-            <h3>Your next visit has more to offer.</h3>
-            <p>
-              Check your points, purchase history and eligible rewards in your customer account.
-            </p>
-            <span>
-              Explore your account <ArrowUpRight size={17} />
-            </span>
-          </div>
-        </a>
-      </div>
-      <div className="sm-service-strip">
-        {[
-          [Store, 'Self pickup', 'Collect your groceries from the store.'],
-          [Truck, 'Delivery', 'Choose delivery during checkout.'],
-          [ShieldCheck, 'Clear shopping', 'See current prices and available stock.'],
-        ].map(([Icon, title, text]) => (
-          <div key={title}>
-            <Icon size={24} />
-            <span>
-              <strong>{title}</strong>
-              <small>{text}</small>
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 export default function StorePage({ kind }) {
   const [settings, setSettings] = useState({});
   useEffect(() => {
-    fetch('/api/public/settings')
-      .then(r => r.json())
-      .then(setSettings)
-      .catch(() => {});
+    loadStoreSettings().then(setSettings);
   }, []);
   const number = whatsappNumber(settings.whatsapp || settings.phone || '');
   const about = kind === 'about';
@@ -209,7 +41,7 @@ export default function StorePage({ kind }) {
                 : 'Questions about a product, pickup, delivery or a vendor application? Get in touch with Star Mart.'}
             </p>
           </div>
-          <img src="/grocery-hero.png" alt="Star Mart grocery essentials" />
+          <img src="/grocery-hero.jpg" alt="Star Mart grocery essentials" />
         </section>
         {about ? (
           <section className="sm-info-body">

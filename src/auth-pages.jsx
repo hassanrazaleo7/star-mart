@@ -3,36 +3,22 @@ import {
   UserRound,
   ShoppingBag,
   ArrowRight,
-  ShieldCheck,
   Eye,
   EyeOff,
   Store,
   Mail,
   LockKeyhole,
 } from 'lucide-react';
-import {
-  auth,
-  configured,
-  GoogleAuthProvider,
-  FacebookAuthProvider,
-  signInWithPopup,
-} from './firebase.js';
+import { configured, loadFirebase } from './firebase-config.js';
+import { api } from './lib/api.js';
 import './auth-pages.css';
 
-async function request(path, payload, token) {
-  const res = await fetch('/api' + path, {
+const request = (path, payload, token) =>
+  api(path, {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: 'Bearer ' + token } : {}),
-    },
-    body: JSON.stringify(payload),
+    body: payload,
+    headers: token ? { authorization: 'Bearer ' + token } : {},
   });
-  const data = await res.json();
-  if (!res.ok) throw Error(data.error || 'Could not continue');
-  return data;
-}
 function Header() {
   return (
     <header className="auth-header">
@@ -96,9 +82,10 @@ export function CustomerAuth({ initialMode = 'signup' }) {
     setBusy(true);
     setError('');
     try {
-      const result = await signInWithPopup(
-        auth,
-        provider === 'google.com' ? new GoogleAuthProvider() : new FacebookAuthProvider()
+      const fb = await loadFirebase();
+      const result = await fb.signInWithPopup(
+        fb.auth,
+        provider === 'google.com' ? new fb.GoogleAuthProvider() : new fb.FacebookAuthProvider()
       );
       await request('/customer/social', { provider }, await result.user.getIdToken());
       location.href = '/shop';

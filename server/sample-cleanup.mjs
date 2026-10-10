@@ -12,7 +12,9 @@ export async function cleanupSamples(remove = false) {
         skipped.push({
           sku: p.sku,
           name: p.name,
-          reason: p.has_history ? 'Transaction or stock history exists' : 'Vendor-linked or edited brand',
+          reason: p.has_history
+            ? 'Transaction or stock history exists'
+            : 'Vendor-linked or edited brand',
         });
         continue;
       }

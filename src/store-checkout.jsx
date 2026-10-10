@@ -13,45 +13,28 @@ import {
   ShieldCheck,
   MessageCircle,
 } from 'lucide-react';
+import { formatPaisa as money, formatDateTime } from './lib/money.js';
 import './store-checkout.css';
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+const TRANSFERS = ['JazzCash transfer', 'Easypaisa transfer', 'Bank transfer'];
 export default function StoreCheckout({
   items,
   total,
   busy,
   error,
   user,
-  name,
-  setName,
-  phone,
-  setPhone,
-  fulfillment,
-  setFulfillment,
-  address,
-  setAddress,
-  note,
-  setNote,
-  paymentMethod,
-  setPaymentMethod,
-  paymentReference,
-  setPaymentReference,
+  store,
+  draft,
+  update,
   adjust,
   remove,
   onClose,
   onSubmit,
   onWhatsApp,
 }) {
-  const [store, setStore] = useState(null);
-  useEffect(() => {
-    fetch('/api/public/settings')
-      .then(r => r.json())
-      .then(setStore)
-      .catch(() => {});
-  }, []);
   const [step, setStep] = useState(0),
     [validation, setValidation] = useState('');
   const panel = useRef(null);
+  const { name, phone, fulfillment, address, note, paymentMethod, paymentReference } = draft;
   useEffect(() => {
     const before = document.activeElement;
     panel.current?.focus();
@@ -62,7 +45,7 @@ export default function StoreCheckout({
           panel.current?.querySelectorAll('button:not(:disabled),input,select,textarea,a[href]') ||
             []
         ).filter(n => n.getClientRects().length);
-        let first = nodes[0],
+        const first = nodes[0],
           last = nodes.at(-1);
         if (
           e.shiftKey &&
@@ -82,16 +65,14 @@ export default function StoreCheckout({
       before?.focus();
     };
   }, [busy]);
-  const transfer = ['JazzCash transfer', 'Easypaisa transfer', 'Bank transfer'].includes(
-      paymentMethod
-    ),
-    env = import.meta.env;
-  const details =
-    paymentMethod === 'JazzCash transfer'
+  const transfer = TRANSFERS.includes(paymentMethod);
+  const accountFor = method =>
+    method === 'JazzCash transfer'
       ? store?.jazzcash
-      : paymentMethod === 'Easypaisa transfer'
+      : method === 'Easypaisa transfer'
         ? store?.easypaisa
         : store?.bank;
+  const details = accountFor(paymentMethod);
   const methods = [
     {
       value: fulfillment === 'Delivery' ? 'Cash on delivery' : 'Cash on pickup',
@@ -126,41 +107,22 @@ export default function StoreCheckout({
       description: 'Pay into the official store bank account.',
       Icon: CreditCard,
     },
-  ].filter(
-    x =>
-      !x.value.includes('transfer') ||
-      Boolean(
-        x.value === 'JazzCash transfer'
-          ? store?.jazzcash
-          : x.value === 'Easypaisa transfer'
-            ? store?.easypaisa
-            : store?.bank
-      )
-  );
+  ].filter(x => !TRANSFERS.includes(x.value) || Boolean(accountFor(x.value)));
   function next() {
     setValidation('');
-    if (step === 2 && !methods.some(x => x.value === paymentMethod)) {
-      setValidation('Choose an available payment method.');
-      return;
-    }
     if (!items.length) return;
     if (step === 1) {
-      if (!(name || user?.displayName || user?.name || '').trim()) {
-        setValidation('Enter your name.');
-        return;
-      }
-      if (!/^\+?[\d\s()-]{7,20}$/.test((phone || user?.phoneNumber || user?.phone || '').trim())) {
-        setValidation('Enter a valid mobile number, e.g. 0300 1234567.');
-        return;
-      }
-      if (fulfillment === 'Delivery' && !address.trim()) {
-        setValidation('Enter your delivery address.');
-        return;
-      }
+      if (!(name || user?.name || '').trim()) return setValidation('Enter your name.');
+      if (!/^\+?[\d\s()-]{7,20}$/.test((phone || user?.phone || '').trim()))
+        return setValidation('Enter a valid mobile number, e.g. 0300 1234567.');
+      if (fulfillment === 'Delivery' && !address.trim())
+        return setValidation('Enter your delivery address.');
     }
-    if (step === 2 && transfer && !paymentReference.trim()) {
-      setValidation('Enter your payment transaction reference.');
-      return;
+    if (step === 2) {
+      if (!methods.some(x => x.value === paymentMethod))
+        return setValidation('Choose an available payment method.');
+      if (transfer && !paymentReference.trim())
+        return setValidation('Enter your payment transaction reference.');
     }
     setStep(x => Math.min(3, x + 1));
   }
@@ -219,7 +181,7 @@ export default function StoreCheckout({
                   items.map(({ p, quantity }) => (
                     <article className="sc-item" key={p.id}>
                       {p.image ? (
-                        <img src={p.image} alt={p.name} />
+                        <img src={p.image} alt={p.name} loading="lazy" />
                       ) : (
                         <div className="sc-placeholder">
                           <ShoppingBag />
@@ -270,13 +232,7 @@ export default function StoreCheckout({
                         <button
                           key={value}
                           className={fulfillment === value ? 'selected' : ''}
-                          onClick={() => {
-                            setFulfillment(value);
-                            setPaymentMethod(
-                              value === 'Delivery' ? 'Cash on delivery' : 'Cash on pickup'
-                            );
-                            setPaymentReference('');
-                          }}
+                          onClick={() => update({ fulfillment: value })}
                         >
                           <Icon size={22} />
                           <strong>{label}</strong>
@@ -288,7 +244,7 @@ export default function StoreCheckout({
                       <input
                         autoComplete="name"
                         value={name}
-                        onChange={e => setName(e.target.value)}
+                        onChange={e => update({ name: e.target.value })}
                         placeholder="Your full name"
                       />
                     </label>
@@ -298,7 +254,7 @@ export default function StoreCheckout({
                         type="tel"
                         autoComplete="tel"
                         value={phone}
-                        onChange={e => setPhone(e.target.value)}
+                        onChange={e => update({ phone: e.target.value })}
                         placeholder="0300 1234567"
                       />
                     </label>
@@ -308,7 +264,7 @@ export default function StoreCheckout({
                         <textarea
                           autoComplete="street-address"
                           value={address}
-                          onChange={e => setAddress(e.target.value)}
+                          onChange={e => update({ address: e.target.value })}
                           placeholder="House / flat, street, area and city"
                           rows={3}
                         />
@@ -322,7 +278,7 @@ export default function StoreCheckout({
                       Delivery / order instructions <small>(optional)</small>
                       <textarea
                         value={note}
-                        onChange={e => setNote(e.target.value)}
+                        onChange={e => update({ note: e.target.value })}
                         placeholder="Landmark or any instructions for the store"
                         rows={2}
                       />
@@ -346,8 +302,7 @@ export default function StoreCheckout({
                         key={value}
                         className={paymentMethod === value ? 'selected' : ''}
                         onClick={() => {
-                          setPaymentMethod(value);
-                          setPaymentReference('');
+                          update({ paymentMethod: value, paymentReference: '' });
                           setValidation('');
                         }}
                       >
@@ -373,15 +328,14 @@ export default function StoreCheckout({
                         ) : (
                           <p className="sc-info">
                             Get the official {paymentMethod.replace(' transfer', '')} account
-                            details from Star Mart before transferring. Payment details have not
-                            been configured yet.
+                            details from Star Mart before transferring.
                           </p>
                         )}
                         <label>
                           Transaction reference
                           <input
                             value={paymentReference}
-                            onChange={e => setPaymentReference(e.target.value)}
+                            onChange={e => update({ paymentReference: e.target.value })}
                             placeholder="Transaction ID from your payment receipt"
                             maxLength={120}
                           />
@@ -433,9 +387,8 @@ export default function StoreCheckout({
                       </>
                     )}
                     <p className="sc-info">
-                      Please check your details. Placing this order does not charge a card or
-                      wallet. Choose normal checkout or the separate WhatsApp button below.
-                      Transfers remain unverified until the store checks them.
+                      Placing this order does not charge a card or wallet. Signed-in orders reserve
+                      stock for up to 48 hours; WhatsApp orders are confirmed by the store first.
                     </p>
                   </div>
                 )}
@@ -485,7 +438,8 @@ export default function StoreCheckout({
                 </button>
                 {step === 3 && onWhatsApp && (
                   <button className="sc-whatsapp" disabled={busy} onClick={onWhatsApp}>
-                    <MessageCircle size={18} /> Order on WhatsApp
+                    <MessageCircle size={18} />{' '}
+                    {user ? 'Order on WhatsApp' : 'Order on WhatsApp (no account needed)'}
                   </button>
                 )}
                 {step > 0 && (
@@ -509,7 +463,8 @@ export default function StoreCheckout({
   );
 }
 export function OrderConfirmation({ order, onClose }) {
-  const whatsapp = order.channel === 'whatsapp';
+  const whatsapp = order.channel === 'whatsapp',
+    inquiry = order.status === 'Inquiry';
   return (
     <div className="sc-overlay">
       <section
@@ -519,11 +474,21 @@ export function OrderConfirmation({ order, onClose }) {
         aria-labelledby="sc-confirm-title"
       >
         <CheckCircle2 size={58} />
-        <h2 id="sc-confirm-title">{whatsapp ? 'Order saved!' : 'Order placed!'}</h2>
+        <h2 id="sc-confirm-title">
+          {order.replayed
+            ? 'Order already placed'
+            : inquiry
+              ? 'Order sent for confirmation'
+              : whatsapp
+                ? 'Order saved!'
+                : 'Order placed!'}
+        </h2>
         <p>
-          {whatsapp
-            ? 'Send your basket to Star Mart on WhatsApp to confirm.'
-            : 'Thank you for shopping with Star Mart.'}
+          {inquiry
+            ? 'Send your basket to Star Mart on WhatsApp. Stock is held once the store confirms.'
+            : whatsapp
+              ? 'Send your basket to Star Mart on WhatsApp to confirm.'
+              : 'Thank you for shopping with Star Mart.'}
         </p>
         <strong className="sc-order-number">{order.id}</strong>
         <div className="sc-review-line">
@@ -534,6 +499,12 @@ export function OrderConfirmation({ order, onClose }) {
           {order.fulfillment === 'Pickup' ? 'Self Pickup' : 'Delivery'} · {order.paymentMethod}
           <br />
           {order.paymentStatus}
+          {order.expiresAt && !inquiry && (
+            <>
+              <br />
+              Stock held until {formatDateTime(order.expiresAt)}
+            </>
+          )}
         </p>
         <p>The store will confirm your order, payment and delivery charges.</p>
         {whatsapp && order.whatsappUrl && (

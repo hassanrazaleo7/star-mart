@@ -16,6 +16,11 @@ export default [
     rules: {
       ...react.configs.recommended.rules,
       ...hooks.configs.recommended.rules,
+      // The React Compiler is not used here; these compiler-oriented checks flag deliberate patterns
+      // (loading data into state inside effects, keeping the latest callback in a ref). Keep the classic rules.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/purity': 'off',
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
       'react/no-unescaped-entities': 'off',
@@ -25,7 +30,14 @@ export default [
     },
   },
   {
-    files: ['server/**/*.mjs', 'tests/**/*.mjs', '*.mjs', 'api/**/*.js', 'eslint.config.js', 'vite.config.js'],
+    files: [
+      'server/**/*.mjs',
+      'tests/**/*.mjs',
+      '*.mjs',
+      'api/**/*.js',
+      'eslint.config.js',
+      'vite.config.js',
+    ],
     languageOptions: { globals: globals.node },
     rules: {
       eqeqeq: ['error', 'smart'],

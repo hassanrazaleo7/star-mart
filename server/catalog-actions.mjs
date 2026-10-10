@@ -1,6 +1,6 @@
 import { tx } from './db.mjs';
 import { id } from './auth.mjs';
-import { wholeQuantity } from './money.mjs';
+import { milli } from './money.mjs';
 import { fail } from './errors.mjs';
 import { str } from './validate.mjs';
 import { lockProduct, stockOf, reservedOf } from './inventory.mjs';
@@ -59,7 +59,7 @@ export async function catalogAction(b) {
 }
 
 export async function setStock(productId, b) {
-  const target = wholeQuantity(b.quantity, 'Stock'),
+  const target = milli(b.quantity, 'Stock'),
     note = str(b.note, 1000);
   if (!note) throw fail('Enter a reason for the stock correction');
   return tx(async c => {

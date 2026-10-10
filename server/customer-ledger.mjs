@@ -10,9 +10,10 @@ import { TIMEZONE } from './config.mjs';
 export const earnedPoints = totalPaisa => Math.floor(Number(totalPaisa) / 10000);
 export async function awardPoints(c, customerId, receiptId, totalPaisa) {
   const items = (
-    await c.query('SELECT qty_milli,line_total_paisa,cost_at_sale_paisa FROM sales WHERE receipt=$1', [
-      receiptId,
-    ])
+    await c.query(
+      'SELECT qty_milli,line_total_paisa,cost_at_sale_paisa FROM sales WHERE receipt=$1',
+      [receiptId]
+    )
   ).rows;
   const grossProfit = items.reduce(
     (sum, x) =>
@@ -77,13 +78,18 @@ export async function customerOverview(customerId) {
   const linesByReceipt = new Map();
   for (const x of lines) {
     if (!linesByReceipt.has(x.receipt)) linesByReceipt.set(x.receipt, []);
-    linesByReceipt
-      .get(x.receipt)
-      .push({ name: x.name || 'Product', qtyMilli: Number(x.qty_milli), totalPaisa: Number(x.line_total_paisa) });
+    linesByReceipt.get(x.receipt).push({
+      name: x.name || 'Product',
+      qtyMilli: Number(x.qty_milli),
+      totalPaisa: Number(x.line_total_paisa),
+    });
   }
   const paymentByReceipt = new Map();
   for (const p of payments.rows)
-    paymentByReceipt.set(p.receipt_id, (paymentByReceipt.get(p.receipt_id) || 0) + Number(p.amount_paisa));
+    paymentByReceipt.set(
+      p.receipt_id,
+      (paymentByReceipt.get(p.receipt_id) || 0) + Number(p.amount_paisa)
+    );
   const bills = receipts.rows.map(r => {
     const total = Number(r.total_paisa),
       received = Math.min(total, Number(r.received_paisa)),
@@ -160,7 +166,8 @@ export async function collectCredit(body) {
     receiptId = str(body.receiptId, 120),
     method = str(body.method, 120),
     amount = paisa(body.amount, 'Amount');
-  if (!customerId || !receiptId || !amount) throw fail('Choose a customer, bill and positive amount');
+  if (!customerId || !receiptId || !amount)
+    throw fail('Choose a customer, bill and positive amount');
   if (!['Cash', 'Card', 'Bank transfer'].includes(method)) throw fail('Choose a payment method');
   return tx(async c => {
     const receipt = (

@@ -58,8 +58,7 @@ export function imageDimensions(data, mime) {
           continue;
         }
         const length = data.readUInt16BE(i + 2);
-        const isSof =
-          marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker);
+        const isSof = marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker);
         if (isSof) return { height: data.readUInt16BE(i + 5), width: data.readUInt16BE(i + 7) };
         i += 2 + length;
       }

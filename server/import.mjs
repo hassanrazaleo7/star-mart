@@ -21,9 +21,7 @@ async function insertMany(c, table, columns, rows) {
       values = [],
       params = [];
     chunk.forEach((row, r) => {
-      values.push(
-        '(' + columns.map((_, k) => '$' + (r * columns.length + k + 1)).join(',') + ')'
-      );
+      values.push('(' + columns.map((_, k) => '$' + (r * columns.length + k + 1)).join(',') + ')');
       params.push(...row);
     });
     await c.query(`INSERT INTO ${table}(${columns.join(',')}) VALUES ${values.join(',')}`, params);
@@ -97,7 +95,18 @@ export async function importLegacy(data) {
         at(p.at),
       ]);
       if (opening)
-        movementRows.push([id(), key, opening, 'opening', null, 'Legacy opening stock', '', '', null, at(p.at)]);
+        movementRows.push([
+          id(),
+          key,
+          opening,
+          'opening',
+          null,
+          'Legacy opening stock',
+          '',
+          '',
+          null,
+          at(p.at),
+        ]);
     }
     for (const x of data.purchases) {
       const pid = products.get(String(x.productId));
@@ -119,7 +128,18 @@ export async function importLegacy(data) {
         text(x.note, 1000),
         at(x.at),
       ]);
-      movementRows.push([id(), pid, qty, 'purchase', key, 'Legacy purchase', text(x.note, 1000), text(x.batch, 100), date(x.expiry), at(x.at)]);
+      movementRows.push([
+        id(),
+        pid,
+        qty,
+        'purchase',
+        key,
+        'Legacy purchase',
+        text(x.note, 1000),
+        text(x.batch, 100),
+        date(x.expiry),
+        at(x.at),
+      ]);
     }
     for (const x of data.sales) {
       const pid = products.get(String(x.productId));
@@ -164,22 +184,162 @@ export async function importLegacy(data) {
       if (!Number.isFinite(change) || !change) continue;
       const qty = Math.sign(change) * milli(Math.abs(change)),
         key = id();
-      adjustmentRows.push([key, pid, qty, text(x.reason) || 'Legacy correction', text(x.note) || 'Imported record', at(x.at)]);
-      movementRows.push([id(), pid, qty, 'adjustment', key, text(x.reason), text(x.note), '', null, at(x.at)]);
+      adjustmentRows.push([
+        key,
+        pid,
+        qty,
+        text(x.reason) || 'Legacy correction',
+        text(x.note) || 'Imported record',
+        at(x.at),
+      ]);
+      movementRows.push([
+        id(),
+        pid,
+        qty,
+        'adjustment',
+        key,
+        text(x.reason),
+        text(x.note),
+        '',
+        null,
+        at(x.at),
+      ]);
     }
     for (const x of data.expenses || []) {
       const amount = paisa(x.amount);
       if (!amount) continue;
-      expenseRows.push([id(), text(x.category) || 'Other', text(x.description) || 'Legacy expense', amount, text(x.payment) || 'Cash', text(x.reference), at(x.at)]);
+      expenseRows.push([
+        id(),
+        text(x.category) || 'Other',
+        text(x.description) || 'Legacy expense',
+        amount,
+        text(x.payment) || 'Cash',
+        text(x.reference),
+        at(x.at),
+      ]);
     }
-    await insertMany(c, 'vendors', ['id', 'name', 'contact', 'phone', 'email', 'address', 'terms', 'tax_id', 'created_at'], vendorRows);
-    await insertMany(c, 'products', ['id', 'name', 'sku', 'barcode', 'brand', 'category', 'pack_size', 'unit', 'location', 'vendor_id', 'cost_paisa', 'price_paisa', 'reorder_milli', 'reorder_qty_milli', 'tax_rate_bps', 'image', 'description', 'created_at'], productRows);
-    await insertMany(c, 'purchases', ['id', 'product_id', 'vendor_id', 'qty_milli', 'unit_cost_paisa', 'invoice', 'payment', 'batch', 'expiry', 'note', 'created_at'], purchaseRows);
-    await insertMany(c, 'receipts', ['id', 'subtotal_paisa', 'discount_paisa', 'tax_paisa', 'total_paisa', 'received_paisa', 'payment', 'customer', 'created_at'], [...receipts].map(([receipt, g]) => [receipt, g.total, 0, 0, g.total, g.total, g.payment, g.customer, g.at]));
-    await insertMany(c, 'sales', ['id', 'receipt', 'product_id', 'qty_milli', 'unit_price_paisa', 'line_total_paisa', 'cost_at_sale_paisa', 'payment', 'customer', 'note', 'created_at'], saleRows);
-    await insertMany(c, 'adjustments', ['id', 'product_id', 'qty_milli', 'reason', 'note', 'created_at'], adjustmentRows);
-    await insertMany(c, 'stock_movements', ['id', 'product_id', 'qty_milli', 'kind', 'ref_id', 'reason', 'note', 'batch', 'expiry', 'created_at'], movementRows);
-    await insertMany(c, 'expenses', ['id', 'category', 'description', 'amount_paisa', 'payment', 'reference', 'created_at'], expenseRows);
+    await insertMany(
+      c,
+      'vendors',
+      ['id', 'name', 'contact', 'phone', 'email', 'address', 'terms', 'tax_id', 'created_at'],
+      vendorRows
+    );
+    await insertMany(
+      c,
+      'products',
+      [
+        'id',
+        'name',
+        'sku',
+        'barcode',
+        'brand',
+        'category',
+        'pack_size',
+        'unit',
+        'location',
+        'vendor_id',
+        'cost_paisa',
+        'price_paisa',
+        'reorder_milli',
+        'reorder_qty_milli',
+        'tax_rate_bps',
+        'image',
+        'description',
+        'created_at',
+      ],
+      productRows
+    );
+    await insertMany(
+      c,
+      'purchases',
+      [
+        'id',
+        'product_id',
+        'vendor_id',
+        'qty_milli',
+        'unit_cost_paisa',
+        'invoice',
+        'payment',
+        'batch',
+        'expiry',
+        'note',
+        'created_at',
+      ],
+      purchaseRows
+    );
+    await insertMany(
+      c,
+      'receipts',
+      [
+        'id',
+        'subtotal_paisa',
+        'discount_paisa',
+        'tax_paisa',
+        'total_paisa',
+        'received_paisa',
+        'payment',
+        'customer',
+        'created_at',
+      ],
+      [...receipts].map(([receipt, g]) => [
+        receipt,
+        g.total,
+        0,
+        0,
+        g.total,
+        g.total,
+        g.payment,
+        g.customer,
+        g.at,
+      ])
+    );
+    await insertMany(
+      c,
+      'sales',
+      [
+        'id',
+        'receipt',
+        'product_id',
+        'qty_milli',
+        'unit_price_paisa',
+        'line_total_paisa',
+        'cost_at_sale_paisa',
+        'payment',
+        'customer',
+        'note',
+        'created_at',
+      ],
+      saleRows
+    );
+    await insertMany(
+      c,
+      'adjustments',
+      ['id', 'product_id', 'qty_milli', 'reason', 'note', 'created_at'],
+      adjustmentRows
+    );
+    await insertMany(
+      c,
+      'stock_movements',
+      [
+        'id',
+        'product_id',
+        'qty_milli',
+        'kind',
+        'ref_id',
+        'reason',
+        'note',
+        'batch',
+        'expiry',
+        'created_at',
+      ],
+      movementRows
+    );
+    await insertMany(
+      c,
+      'expenses',
+      ['id', 'category', 'description', 'amount_paisa', 'payment', 'reference', 'created_at'],
+      expenseRows
+    );
     return {
       products: products.size,
       vendors: vendors.size,

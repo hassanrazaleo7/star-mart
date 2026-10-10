@@ -1,20 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { get, seg } from './lib/api.js';
+import { formatPaisa as money } from './lib/money.js';
 import './product-detail.css';
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+// Product dialog: shows the full description (fetched on demand) and lets the shopper set the cart quantity directly.
 export default function ProductDetail({ product, quantity, onAdd, onQuantity, onCart, onClose }) {
   const close = useRef();
-  const [draft, setDraft] = useState(String(quantity)),
-    [error, setError] = useState('');
-  useEffect(() => setDraft(String(quantity)), [quantity]);
+  const [draft, setDraft] = useState(String(quantity || 1)),
+    [error, setError] = useState(''),
+    [detail, setDetail] = useState(null);
+  useEffect(() => setDraft(String(quantity || 1)), [quantity]);
+  useEffect(() => {
+    let active = true;
+    if (product.description !== undefined) return;
+    get('/public/products/' + seg(product.id))
+      .then(r => active && setDetail(r.product))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [product.id]);
   useEffect(() => {
     const previous = document.activeElement;
     close.current?.focus();
     const key = e => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'Tab') {
-        let nodes = close.current
+        const nodes = close.current
             ?.closest('[role="dialog"]')
             ?.querySelectorAll('button:not(:disabled),input'),
           first = nodes?.[0],
@@ -34,10 +46,17 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
       previous?.focus();
     };
   }, []);
-  let available = product.sample
-      ? 10
-      : Math.max(0, Math.floor(Number(product.stock_milli || 0) / 1000)),
-    full = quantity >= available;
+  const available = Math.max(0, Math.floor(Number(product.stock_milli || 0) / 1000)),
+    full = quantity >= available,
+    description = product.description ?? detail?.description;
+  function addDraft() {
+    const n = Number(draft);
+    if (!Number.isInteger(n) || n < 1 || n + quantity > available) {
+      setError('Choose a whole quantity within available stock.');
+      return;
+    }
+    if (onAdd(product.id, n)) setError('');
+  }
   return (
     <div
       className="pd-overlay"
@@ -71,7 +90,7 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
           <span className={'pd-stock ' + (!available ? 'empty' : '')}>
             {available ? available + ' available' : 'Currently out of stock'}
           </span>
-          {product.description && <p className="pd-description">{product.description}</p>}
+          {description && <p className="pd-description">{description}</p>}
           {quantity > 0 && (
             <p className="pd-added" role="status">
               <CheckCircle2 size={17} /> {quantity} in your cart
@@ -82,19 +101,24 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
               This product can be ordered once Star Mart receives more stock.
             </p>
           )}
-          {quantity > 0 && (
+          {available > 0 && (
             <label className="pd-quantity">
-              Quantity in cart
+              {quantity > 0 ? 'Quantity in cart' : 'Quantity to add'}
               <div>
                 <button
-                  onClick={() => onQuantity(Math.max(0, quantity - 1))}
+                  disabled={quantity > 0 ? quantity <= 0 : Number(draft) <= 1}
+                  onClick={() =>
+                    quantity > 0
+                      ? onQuantity(Math.max(0, quantity - 1))
+                      : setDraft(String(Math.max(1, Number(draft || 1) - 1)))
+                  }
                   aria-label="Reduce quantity"
                 >
                   −
                 </button>
                 <input
                   type="number"
-                  min="0"
+                  min={quantity > 0 ? 0 : 1}
                   max={available}
                   step="1"
                   value={draft}
@@ -103,7 +127,8 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
                     setError('');
                   }}
                   onBlur={() => {
-                    let n = Number(draft);
+                    if (quantity <= 0) return;
+                    const n = Number(draft);
                     if (draft === '' || !Number.isInteger(n) || n < 0 || n > available) {
                       setError('Enter a whole quantity from 0 to ' + available);
                       setDraft(String(quantity));
@@ -111,31 +136,29 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
                     }
                     onQuantity(n);
                   }}
-                  aria-label="Quantity in cart"
+                  aria-label={quantity > 0 ? 'Quantity in cart' : 'Quantity to add'}
                 />
                 <button
-                  disabled={full}
-                  onClick={() => onQuantity(quantity + 1)}
+                  disabled={quantity > 0 ? full : Number(draft) >= available}
+                  onClick={() =>
+                    quantity > 0
+                      ? onQuantity(quantity + 1)
+                      : setDraft(String(Number(draft || 0) + 1))
+                  }
                   aria-label="Increase quantity"
                 >
                   +
                 </button>
               </div>
-              <small>Enter quantity directly. Zero removes this product.</small>
+              {quantity > 0 && <small>Enter quantity directly. Zero removes this product.</small>}
               {error && <small role="alert">{error}</small>}
             </label>
           )}
-          <button
-            className="pd-add"
-            disabled={!available || full}
-            onClick={() => onAdd(product.id)}
-          >
-            {!available
-              ? 'Out of stock'
-              : full
-                ? 'All available units are in your cart'
-                : 'Add to cart'}
-          </button>
+          {quantity <= 0 && (
+            <button className="pd-add" disabled={!available} onClick={addDraft}>
+              {!available ? 'Out of stock' : 'Add to cart'}
+            </button>
+          )}
           {quantity > 0 && (
             <button className="pd-view" onClick={onCart}>
               View cart & checkout →

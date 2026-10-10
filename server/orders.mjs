@@ -47,11 +47,14 @@ export async function placeOrder(customer, b, { clientKey = '' } = {}) {
   if (!PHONE.test(phone)) throw fail('Enter a valid contact number');
   if (fulfillment === 'Delivery' && !address) throw fail('Enter delivery address');
   const paymentMethod =
-    str(b.paymentMethod, 40) || (fulfillment === 'Delivery' ? 'Cash on delivery' : 'Cash on pickup');
+    str(b.paymentMethod, 40) ||
+    (fulfillment === 'Delivery' ? 'Cash on delivery' : 'Cash on pickup');
   if (!ORDER_PAYMENTS.includes(paymentMethod)) throw fail('Choose a payment method');
   if (
-    (fulfillment === 'Delivery' && ['Cash on pickup', 'POS card on pickup'].includes(paymentMethod)) ||
-    (fulfillment === 'Pickup' && ['Cash on delivery', 'POS card on delivery'].includes(paymentMethod))
+    (fulfillment === 'Delivery' &&
+      ['Cash on pickup', 'POS card on pickup'].includes(paymentMethod)) ||
+    (fulfillment === 'Pickup' &&
+      ['Cash on delivery', 'POS card on delivery'].includes(paymentMethod))
   )
     throw fail('Payment method does not match delivery or pickup');
   const paymentReference = str(b.paymentReference, 120);
@@ -77,7 +80,16 @@ export async function placeOrder(customer, b, { clientKey = '' } = {}) {
   if (requestKey && !/^[a-zA-Z0-9-]{10,80}$/.test(requestKey))
     throw fail('Invalid order request key');
   const requestHash = hash(
-    JSON.stringify({ lines, fulfillment, name, phone, address, paymentMethod, paymentReference, note })
+    JSON.stringify({
+      lines,
+      fulfillment,
+      name,
+      phone,
+      address,
+      paymentMethod,
+      paymentReference,
+      note,
+    })
   );
   const expiryHours = guest
     ? policy.expiryHours
@@ -238,9 +250,8 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
   if (!['Fulfilled', 'Cancelled', 'Confirm', 'Extend'].includes(action))
     throw fail('Invalid action');
   return tx(async c => {
-    const order = (
-      await c.query('SELECT * FROM customer_orders WHERE id=$1 FOR UPDATE', [idValue])
-    ).rows[0];
+    const order = (await c.query('SELECT * FROM customer_orders WHERE id=$1 FOR UPDATE', [idValue]))
+      .rows[0];
     if (!order) throw fail('Order not found', 404);
     const items = (
       await c.query('SELECT * FROM customer_order_items WHERE order_id=$1 ORDER BY product_id', [
@@ -295,7 +306,8 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
       );
     let received = Number(order.total_paisa);
     if (pickup) {
-      if (!PICKUP_METHODS.includes(body.paymentMethod)) throw fail('Choose the actual payment method');
+      if (!PICKUP_METHODS.includes(body.paymentMethod))
+        throw fail('Choose the actual payment method');
       received = paisa(body.received, 'Amount received');
       if (received < Number(order.total_paisa))
         throw fail('Collect the full order total before closing the sale');
@@ -305,7 +317,8 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
         idValue,
       ]);
     }
-    if (body.paymentCollected !== true) throw fail('Confirm payment was collected before fulfilling');
+    if (body.paymentCollected !== true)
+      throw fail('Confirm payment was collected before fulfilling');
     const verifiedReference = str(body.verifiedReference, 120);
     if (TRANSFER_METHODS.includes(order.payment_method) && !verifiedReference)
       throw fail('Enter the confirmed bank/wallet transaction reference before fulfilling');
@@ -313,7 +326,8 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
     for (const item of items) {
       const p = products.get(item.product_id);
       if (!p) throw fail(item.name + ' no longer exists');
-      if (Number(item.qty_milli) > stockOf(p)) throw fail(item.name + ' no longer has enough stock');
+      if (Number(item.qty_milli) > stockOf(p))
+        throw fail(item.name + ' no longer has enough stock');
       const sale = id();
       await c.query(
         'INSERT INTO sales(id,receipt,product_id,qty_milli,unit_price_paisa,line_total_paisa,cost_at_sale_paisa,payment,customer,note) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',

@@ -226,7 +226,12 @@ export async function checkout(b, user = { role: 'admin', id: 'owner' }) {
         'INSERT INTO stock_movements(id,product_id,qty_milli,kind,ref_id,reason) VALUES($1,$2,$3,$4,$5,$6)',
         [id(), x.productId, -x.qty, 'sale', sale, 'POS sale']
       );
-      output.push({ name: x.p.name, qty: x.qty, unitPrice: int(x.p.price_paisa), total: lineTotal });
+      output.push({
+        name: x.p.name,
+        qty: x.qty,
+        unitPrice: int(x.p.price_paisa),
+        total: lineTotal,
+      });
     }
     if (manualDiscount > ALERT_DISCOUNT_PAISA)
       await c.query(

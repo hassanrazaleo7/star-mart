@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400..800&display=swap');
 /* One Star Mart palette across the storefront and all account panels. */
 :root {
   --star-red: #fc2600;
@@ -1260,7 +1259,7 @@ button:disabled {
       rgba(255, 253, 247, 0.74) 52%,
       rgba(255, 253, 247, 0) 70%
     ),
-    url('/vendor-grocery.png');
+    url('/vendor-grocery.jpg');
 }
 .sm-portal.sm-vendor .sm-auth-copy {
   position: relative;
@@ -1292,7 +1291,7 @@ button:disabled {
       rgba(255, 255, 255, 0.74) 52%,
       rgba(255, 255, 255, 0) 70%
     ),
-    url('/grocery-hero.png');
+    url('/grocery-hero.jpg');
 }
 .sm-auth.sm-vendor .sm-auth-scene,
 .sm-portal.sm-vendor .sm-auth-scene {
@@ -1304,7 +1303,7 @@ button:disabled {
       rgba(255, 255, 255, 0.74) 52%,
       rgba(255, 255, 255, 0) 70%
     ),
-    url('/vendor-grocery.png');
+    url('/vendor-grocery.jpg');
 }
 .sm-auth .sm-auth-copy {
   position: relative;

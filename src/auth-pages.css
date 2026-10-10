@@ -59,10 +59,10 @@
   align-items: center;
   gap: 6vw;
   padding: 44px max(6vw, 30px);
-  background: #ffebe8 url('/grocery-hero.png') center/cover no-repeat;
+  background: #ffebe8 url('/grocery-hero.jpg') center/cover no-repeat;
 }
 .sm-vendor .sm-auth-scene {
-  background-image: url('/vendor-grocery.png');
+  background-image: url('/vendor-grocery.jpg');
 }
 .sm-auth-copy {
   max-width: 610px;
@@ -339,13 +339,13 @@
   }
 }
 .sm-portal.sm-admin .sm-auth-scene {
-  background-image: linear-gradient(90deg, #fff2efaa, #fff2ef7a), url('/grocery-hero.png');
+  background-image: linear-gradient(90deg, #fff2efaa, #fff2ef7a), url('/grocery-hero.jpg');
 }
 .sm-portal.sm-vendor .sm-auth-scene {
-  background-image: url('/vendor-grocery.png');
+  background-image: url('/vendor-grocery.jpg');
 }
 .sm-portal.sm-staff .sm-auth-scene {
-  background-image: url('/grocery-hero.png');
+  background-image: url('/grocery-hero.jpg');
 }
 .sm-portal .sm-auth-card .sm-primary {
   background: #00614d;

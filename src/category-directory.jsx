@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ShoppingBag, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
-import { SHOP_DEPARTMENTS, departmentValue, matchesDepartment } from './shop-departments.mjs';
+import { SHOP_DEPARTMENTS, departmentValue } from './shop-departments.mjs';
 import './category-directory.css';
 export function CategoryIcon() {
   return <ShoppingBag className="category-symbol" aria-hidden="true" />;
@@ -70,7 +70,7 @@ export default function CategoryDirectory({ selected, onSelect }) {
                     alt=""
                     loading="lazy"
                     onError={e => {
-                      e.currentTarget.src = '/grocery-hero.png';
+                      e.currentTarget.src = '/grocery-hero.jpg';
                       e.currentTarget.onerror = null;
                     }}
                   />

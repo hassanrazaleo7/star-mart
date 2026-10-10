@@ -269,7 +269,9 @@ async function migrate() {
   // A dedicated client keeps the advisory lock and the DDL on one connection.
   const c = database.connect ? await database.connect() : database;
   try {
-    await c.query('CREATE TABLE IF NOT EXISTS schema_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)');
+    await c.query(
+      'CREATE TABLE IF NOT EXISTS schema_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)'
+    );
     if (database.connect) await c.query('SELECT pg_advisory_lock(727401)');
     try {
       const current = Number(

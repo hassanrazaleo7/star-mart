@@ -107,15 +107,18 @@ export async function returnToVendor(b) {
     if (!product) throw fail('Product not found', 404);
     const prior = Number(
       (
-        await c.query('SELECT COALESCE(SUM(qty_milli),0) n FROM vendor_returns WHERE purchase_id=$1', [
-          p.id,
-        ])
+        await c.query(
+          'SELECT COALESCE(SUM(qty_milli),0) n FROM vendor_returns WHERE purchase_id=$1',
+          [p.id]
+        )
       ).rows[0].n
     );
-    if (qty + prior > Number(p.qty_milli)) throw fail('Return exceeds the original received quantity');
+    if (qty + prior > Number(p.qty_milli))
+      throw fail('Return exceeds the original received quantity');
     if (qty > availableOf(product)) throw fail('Not enough unreserved stock to return');
     const amount =
-      lineAmount(prior + qty, Number(p.unit_cost_paisa)) - lineAmount(prior, Number(p.unit_cost_paisa));
+      lineAmount(prior + qty, Number(p.unit_cost_paisa)) -
+      lineAmount(prior, Number(p.unit_cost_paisa));
     const key = id();
     const row = (
       await c.query(

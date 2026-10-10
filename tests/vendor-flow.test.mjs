@@ -40,9 +40,9 @@ test('vendor application, approval, own catalog, sales, supplier credit and staf
     });
     assert.equal(a.status, 201, JSON.stringify(a.body));
     await call('/setup', 'POST', { name: 'Owner', password: 'ownerpass1' });
-    let owner = (await call('/login', 'POST', { password: 'ownerpass1' })).headers['set-cookie'].split(
-        ';'
-      )[0],
+    let owner = (await call('/login', 'POST', { password: 'ownerpass1' })).headers[
+        'set-cookie'
+      ].split(';')[0],
       admin = (path, method = 'GET', body) => call(path, method, body, owner);
     let applications = await admin('/vendor/applications');
     assert.equal(applications.body.applications.length, 1);

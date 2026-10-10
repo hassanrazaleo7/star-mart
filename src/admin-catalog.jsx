@@ -24,8 +24,8 @@ import {
   X,
   CheckCircle2,
 } from 'lucide-react';
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
+import { post, seg } from './lib/api.js';
+import { formatPaisa as money, formatQty } from './lib/money.js';
 const actions = [
   ['hide', 'Hide from website', EyeOff],
   ['show', 'Show / restore', Eye],
@@ -55,8 +55,7 @@ export default function AdminCatalog({
     [stockDialog, setStockDialog] = useState(null),
     [quantity, setQuantity] = useState(''),
     [reason, setReason] = useState('');
-  let cancel = useRef(),
-    trigger = useRef();
+  let trigger = useRef();
   let shown = products.filter(
       p =>
         (vendor === 'all' || (vendor === 'none' ? !p.vendor_id : p.vendor_id === vendor)) &&
@@ -128,16 +127,15 @@ export default function AdminCatalog({
       let totalChanged = 0,
         totalSkipped = [];
       for (let start = 0; start < ids.length; start += 500) {
-        let r = await fetch('/api/products/bulk-action', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ action: type, ids: ids.slice(start, start + 500) }),
-          }),
-          j = await r.json();
-        if (!r.ok) {
-          setBlockedOrders(j.pendingOrders || []);
-          throw Error(j.error || 'Could not update these products');
+        let j;
+        try {
+          j = await post('/products/bulk-action', {
+            action: type,
+            ids: ids.slice(start, start + 500),
+          });
+        } catch (e) {
+          setBlockedOrders(e.body?.pendingOrders || []);
+          throw e;
         }
         totalChanged += Number(j.changed || 0);
         totalSkipped.push(...(j.skipped || []));
@@ -164,6 +162,21 @@ export default function AdminCatalog({
               j.skipped.length +
               ' retained because purchase, stock or order history exists. You can archive them instead.'
             : '')
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function review(p, accept) {
+    setBusy(true);
+    setError('');
+    try {
+      await post('/products/' + seg(p.id) + '/price-review', { accept });
+      await onRefresh();
+      setMessage(
+        accept ? 'Selling price updated to the vendor proposal.' : 'Proposed price declined.'
       );
     } catch (e) {
       setError(e.message);
@@ -391,17 +404,29 @@ export default function AdminCatalog({
                     <td>{vendors.find(v => v.id === p.vendor_id)?.name || 'Unassigned'}</td>
                     <td>{p.barcode || 'Not added'}</td>
                     <td>
-                      {Math.floor(Number(stock(p)) / 1000)} {p.unit}
-                      {Number(stock(p)) % 1000 !== 0 && (
-                        <small className="stock-correction">Old stock needs correction</small>
+                      {formatQty(stock(p), p.unit)}
+                      {Number(p.reserved_milli) > 0 && (
+                        <small className="stock-correction">
+                          {formatQty(p.reserved_milli)} reserved by online orders
+                        </small>
                       )}
                       <small>
-                        Vendor available: {Math.floor(Number(p.vendor_available_milli || 0) / 1000)}{' '}
-                        {p.unit}
+                        Vendor available: {formatQty(p.vendor_available_milli || 0, p.unit)}
                       </small>
                     </td>
                     <td>
                       {money(p.cost_paisa)} / {money(p.price_paisa)}
+                      {p.vendor_proposed_price_paisa != null && (
+                        <small className="ac-proposed">
+                          Vendor proposes {money(p.vendor_proposed_price_paisa)}{' '}
+                          <button disabled={busy} onClick={() => review(p, true)}>
+                            Accept
+                          </button>{' '}
+                          <button disabled={busy} onClick={() => review(p, false)}>
+                            Decline
+                          </button>
+                        </small>
+                      )}
                     </td>
                     <td>
                       <span className={'ac-status ' + state}>
@@ -430,7 +455,7 @@ export default function AdminCatalog({
                             disabled={busy}
                             onClick={() => {
                               setStockDialog(p);
-                              setQuantity(String(Math.floor(Number(stock(p)) / 1000)));
+                              setQuantity(String(Number(stock(p)) / 1000));
                               setReason('');
                               setError('');
                             }}
@@ -518,9 +543,8 @@ export default function AdminCatalog({
                 ? 'Remove these products from the active catalog and website. Financial records and existing stock history stay intact. Restore them from Deleted / restore. Pending orders must be completed or cancelled first.'
                 : 'These products will leave the website and stop appearing for new POS sales. Their stock and complete account history stay saved. You can restore them from this menu later.'}
             </AlertDialogDescription>
-            {error && <p className="vp-error">{error}</p>}
             {error && (
-              <p role="alert" className="error">
+              <p role="alert" className="vp-error">
                 {error}
               </p>
             )}
@@ -532,18 +556,8 @@ export default function AdminCatalog({
                   setBusy(true);
                   setError('');
                   try {
-                    for (let id of blockedOrders) {
-                      let r = await fetch('/api/orders/' + encodeURIComponent(id) + '/Cancelled', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: { 'content-type': 'application/json' },
-                        body: '{}',
-                      });
-                      if (!r.ok) {
-                        let j = await r.json();
-                        throw Error(j.error);
-                      }
-                    }
+                    for (let id of blockedOrders)
+                      await post('/orders/' + seg(id) + '/Cancelled', {});
                     setBlockedOrders([]);
                     await apply('delete', dialog.ids);
                   } catch (e) {
@@ -592,14 +606,10 @@ export default function AdminCatalog({
                 setBusy(true);
                 setError('');
                 try {
-                  let r = await fetch('/api/products/' + stockDialog.id + '/stock', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ quantity, note: reason }),
+                  await post('/products/' + seg(stockDialog.id) + '/stock', {
+                    quantity,
+                    note: reason,
                   });
-                  let j = await r.json();
-                  if (!r.ok) throw Error(j.error);
                   await onRefresh();
                   setStockDialog(null);
                   setMessage(
@@ -617,7 +627,7 @@ export default function AdminCatalog({
                 <input
                   type="number"
                   min="0"
-                  step="1"
+                  step={stockDialog.unit && stockDialog.unit !== 'piece' ? '0.001' : '1'}
                   required
                   value={quantity}
                   onChange={e => setQuantity(e.target.value)}

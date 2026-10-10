@@ -12,15 +12,8 @@ import {
 import './customer-dashboard.css';
 import { useLiveRefresh } from './live.js';
 
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 2 });
-const date = x =>
-  new Date(x).toLocaleDateString('en-PK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Asia/Karachi',
-  });
+import { get, post } from './lib/api.js';
+import { formatPaisa as money, formatDate as date, formatDateTime, TIMEZONE } from './lib/money.js';
 export default function CustomerDashboard() {
   const [data, setData] = useState(null),
     [error, setError] = useState(''),
@@ -28,15 +21,12 @@ export default function CustomerDashboard() {
     [selected, setSelected] = useState(null);
   async function load() {
     try {
-      const r = await fetch('/api/customer/overview', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-        }),
-        j = await r.json();
-      if (!r.ok) throw Error(j.error || 'Could not load account');
+      const j = await get('/customer/overview');
       setData(j);
       setError('');
     } catch (e) {
+      // Keep the last good dashboard on a transient refresh failure; only a missing session clears it.
+      if (e.status === 401 || e.status === 409) setData(null);
       setError(e.message);
     } finally {
       setLoading(false);
@@ -45,18 +35,23 @@ export default function CustomerDashboard() {
   useEffect(() => {
     load();
   }, []);
-  useLiveRefresh(load);
+  useLiveRefresh(load, 10000);
   async function logout() {
-    await fetch('/api/customer/logout', { method: 'POST', credentials: 'same-origin' });
-    location.href = '/login';
+    try {
+      await post('/customer/logout');
+    } finally {
+      location.href = '/login';
+    }
   }
   const month = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Karachi',
+      timeZone: TIMEZONE,
       year: 'numeric',
       month: '2-digit',
     }).format(new Date()),
-    thisMonth = data?.monthly.find(x => x.month === month),
-    due = data?.bills.filter(x => x.duePaisa > 0) || [];
+    thisMonth = data?.monthly?.find(x => x.month === month),
+    due = data?.bills?.filter(x => x.duePaisa > 0) || [],
+    firstName = (data?.customer?.name || 'there').split(' ')[0],
+    points = Number(data?.summary?.points || 0);
   return (
     <div className="customer-app">
       <header>
@@ -77,7 +72,7 @@ export default function CustomerDashboard() {
       </header>
       {loading ? (
         <main className="customer-wrap customer-loading">Loading your dashboard…</main>
-      ) : error ? (
+      ) : !data ? (
         <main className="customer-wrap customer-empty">
           <h1>Welcome to Star Mart</h1>
           <p>Sign in to view your purchases, credit balance and rewards.</p>
@@ -91,13 +86,18 @@ export default function CustomerDashboard() {
           <section className="customer-hero">
             <div>
               <span>MY STAR MART</span>
-              <h1>Hello, {data.customer.name.split(' ')[0]} 👋</h1>
+              <h1>Hello, {firstName} 👋</h1>
               <p>Your shopping, bills and rewards in one place.</p>
             </div>
             <a href="/shop#products">
               Continue shopping <ArrowRight size={18} />
             </a>
           </section>
+          {error && (
+            <p className="muted" role="status">
+              Showing your last loaded dashboard · {error}
+            </p>
+          )}
           <PasswordChange kind="customer" />
           <section className="customer-stats" aria-label="Account summary">
             <article>
@@ -123,7 +123,7 @@ export default function CustomerDashboard() {
             <article className="points">
               <Gift />
               <span>Star Points</span>
-              <strong>{data.summary.points.toLocaleString('en-PK')}</strong>
+              <strong>{points.toLocaleString('en-PK')}</strong>
               <small>Available to redeem at the counter</small>
             </article>
           </section>
@@ -138,18 +138,14 @@ export default function CustomerDashboard() {
               <div className="points-progress">
                 <span
                   style={{
-                    width:
-                      (data.summary.points >= 100 ? 100 : Math.max(0, data.summary.points) % 100) +
-                      '%',
+                    width: (points >= 100 ? 100 : Math.max(0, points) % 100) + '%',
                   }}
                 />
               </div>
               <strong>
-                {data.summary.points >= 100
+                {points >= 100
                   ? 'Reward ready: ask the cashier to apply it.'
-                  : 100 -
-                    (Math.max(0, data.summary.points) % 100) +
-                    ' points until your next reward'}
+                  : 100 - (Math.max(0, points) % 100) + ' points until your next reward'}
               </strong>
               <small>
                 Points on credit bills appear after full settlement. Rewards require recorded
@@ -273,7 +269,11 @@ export default function CustomerDashboard() {
                     <span>
                       {o.id}
                       <small>
-                        {date(o.created_at)} · {o.fulfillment} · {o.status}
+                        {date(o.created_at)} · {o.fulfillment} ·{' '}
+                        {o.status === 'Inquiry' ? 'Awaiting store confirmation' : o.status}
+                        {['Pending', 'Inquiry'].includes(o.status) && o.expires_at && (
+                          <> · held until {formatDateTime(o.expires_at)}</>
+                        )}
                         {o.status === 'Fulfilled' && (
                           <>
                             {' '}

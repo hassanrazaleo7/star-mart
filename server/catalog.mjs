@@ -24,7 +24,9 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
     taxRate = Math.round(Number(b.taxRate || 0) * 100);
   if (!Number.isInteger(taxRate) || taxRate < 0 || taxRate > 10000) throw fail('Invalid tax rate');
   const vendorAvailable =
-    b.vendorAvailable !== undefined ? milli(b.vendorAvailable, 'Vendor available stock') : undefined;
+    b.vendorAvailable !== undefined
+      ? milli(b.vendorAvailable, 'Vendor available stock')
+      : undefined;
   const vendor = actor.role === 'vendor';
   const vendorId = vendor ? actor.vendor_id : str(b.vendorId) || null,
     opening = vendor ? 0 : b.opening === undefined ? 0 : milli(b.opening, 'Opening stock');
@@ -51,7 +53,6 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
       image: '',
       description: str(b.description, 3000),
     };
-    let row;
     if (productId) {
       const old = (await c.query('SELECT * FROM products WHERE id=$1 FOR UPDATE', [productId]))
         .rows[0];
@@ -78,58 +79,54 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
           proposedPrice = price !== Number(old.price_paisa) ? price : null;
         }
       } else if (price !== Number(old.price_paisa)) proposedPrice = null;
-      row = (
-        await c.query(
-          `UPDATE products SET name=$1,sku=$2,barcode=$3,brand=$4,category=$5,pack_size=$6,unit=$7,location=$8,vendor_id=$9,cost_paisa=$10,price_paisa=$11,reorder_milli=$12,reorder_qty_milli=$13,tax_rate_bps=$14,image=$15,description=$16,vendor_proposed_price_paisa=$17,updated_at=NOW() WHERE id=$18 RETURNING *`,
-          [
-            next.name,
-            next.sku,
-            next.barcode,
-            next.brand,
-            next.category,
-            next.pack_size,
-            next.unit,
-            next.location,
-            next.vendor_id,
-            next.cost_paisa,
-            next.price_paisa,
-            next.reorder_milli,
-            next.reorder_qty_milli,
-            next.tax_rate_bps,
-            next.image,
-            next.description,
-            proposedPrice,
-            productId,
-          ]
-        )
-      ).rows[0];
+      await c.query(
+        `UPDATE products SET name=$1,sku=$2,barcode=$3,brand=$4,category=$5,pack_size=$6,unit=$7,location=$8,vendor_id=$9,cost_paisa=$10,price_paisa=$11,reorder_milli=$12,reorder_qty_milli=$13,tax_rate_bps=$14,image=$15,description=$16,vendor_proposed_price_paisa=$17,updated_at=NOW() WHERE id=$18 RETURNING *`,
+        [
+          next.name,
+          next.sku,
+          next.barcode,
+          next.brand,
+          next.category,
+          next.pack_size,
+          next.unit,
+          next.location,
+          next.vendor_id,
+          next.cost_paisa,
+          next.price_paisa,
+          next.reorder_milli,
+          next.reorder_qty_milli,
+          next.tax_rate_bps,
+          next.image,
+          next.description,
+          proposedPrice,
+          productId,
+        ]
+      );
     } else {
       productId = id();
       if (!next.sku) next.sku = 'SM-' + productId.slice(0, 16).toUpperCase();
-      row = (
-        await c.query(
-          `INSERT INTO products(id,name,sku,barcode,brand,category,pack_size,unit,location,vendor_id,cost_paisa,price_paisa,reorder_milli,reorder_qty_milli,tax_rate_bps,image,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
-          [
-            productId,
-            next.name,
-            next.sku,
-            next.barcode,
-            next.brand,
-            next.category,
-            next.pack_size,
-            next.unit,
-            next.location,
-            next.vendor_id,
-            next.cost_paisa,
-            next.price_paisa,
-            next.reorder_milli,
-            next.reorder_qty_milli,
-            next.tax_rate_bps,
-            next.image,
-            next.description,
-          ]
-        )
-      ).rows[0];
+      await c.query(
+        `INSERT INTO products(id,name,sku,barcode,brand,category,pack_size,unit,location,vendor_id,cost_paisa,price_paisa,reorder_milli,reorder_qty_milli,tax_rate_bps,image,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+        [
+          productId,
+          next.name,
+          next.sku,
+          next.barcode,
+          next.brand,
+          next.category,
+          next.pack_size,
+          next.unit,
+          next.location,
+          next.vendor_id,
+          next.cost_paisa,
+          next.price_paisa,
+          next.reorder_milli,
+          next.reorder_qty_milli,
+          next.tax_rate_bps,
+          next.image,
+          next.description,
+        ]
+      );
       if (opening)
         await c.query(
           'INSERT INTO stock_movements(id,product_id,qty_milli,kind,reason) VALUES($1,$2,$3,$4,$5)',

@@ -46,12 +46,10 @@ export async function requestReset(b) {
         )
       ).rows[0];
       if (!recent)
-        await c.query('INSERT INTO password_requests(id,account_id,kind,email) VALUES($1,$2,$3,$4)', [
-          id(),
-          a.id,
-          k,
-          email,
-        ]);
+        await c.query(
+          'INSERT INTO password_requests(id,account_id,kind,email) VALUES($1,$2,$3,$4)',
+          [id(), a.id, k, email]
+        );
     }
   });
   return {
@@ -142,7 +140,10 @@ export async function changePassword(user, b) {
     newPassword = checkPassword(b.password);
   const current = (await (await db()).query(`SELECT * FROM ${cfg.table} WHERE id=$1`, [user.id]))
     .rows[0];
-  if (!current || !(await verifyAsync(String(b.currentPassword || ''), current.salt, current.password_hash)))
+  if (
+    !current ||
+    !(await verifyAsync(String(b.currentPassword || ''), current.salt, current.password_hash))
+  )
     throw fail('Current password is incorrect', 401);
   const salt = id(),
     passwordHash = await passwordHashAsync(newPassword, salt);

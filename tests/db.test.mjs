@@ -67,9 +67,13 @@ test('transactions on the local engine are serialized and migrations are idempot
         throw Error('boom');
       })
     );
-    assert.equal((await (await db()).query("SELECT COUNT(*) n FROM vendors WHERE id='v-rollback'")).rows[0].n, 0);
+    assert.equal(
+      (await (await db()).query("SELECT COUNT(*) n FROM vendors WHERE id='v-rollback'")).rows[0].n,
+      0
+    );
     await init();
-    const version = (await (await db()).query("SELECT value FROM schema_meta WHERE key='version'")).rows[0].value;
+    const version = (await (await db()).query("SELECT value FROM schema_meta WHERE key='version'"))
+      .rows[0].value;
     assert.ok(Number(version) >= 1);
   } finally {
     await close();
@@ -79,7 +83,9 @@ test('transactions on the local engine are serialized and migrations are idempot
 
 test('no server module writes outside tx()', () => {
   const files = ['server', 'server/routes'].flatMap(d =>
-    readdirSync(d).filter(f => f.endsWith('.mjs')).map(f => join(d, f))
+    readdirSync(d)
+      .filter(f => f.endsWith('.mjs'))
+      .map(f => join(d, f))
   );
   const offenders = files.filter(f =>
     /db\(\)\s*\)\s*\.query\(\s*['"`]\s*(INSERT|UPDATE|DELETE)/i.test(readFileSync(f, 'utf8'))

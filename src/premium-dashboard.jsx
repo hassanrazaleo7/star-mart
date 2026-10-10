@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   ArrowRight,
   ScanBarcode,
-  PackagePlus,
   Boxes,
   ShoppingBag,
   Wallet,
@@ -12,22 +11,20 @@ import {
   Clock3,
   ChevronRight,
   Activity,
-  TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { pakistanDay } from './daily-sales.jsx';
-const money = n =>
-  'Rs ' + (Number(n || 0) / 100).toLocaleString('en-PK', { maximumFractionDigits: 0 });
+import { formatPaisa, localDay as pakistanDay } from './lib/money.js';
+const money = n => formatPaisa(n, { decimals: 0 });
 const compact = n => Number(n || 0).toLocaleString('en-PK', { maximumFractionDigits: 2 });
 export default function PremiumDashboard({ data, low, go, stock, orders = [], user }) {
   const [period, setPeriod] = useState('7');
   const summary = data.dashboardSummary || {},
     todaySales = Number(data.todaySalesPaisa || 0),
-    pending = orders.filter(o => o.status === 'Pending'),
+    pending = orders.filter(o => ['Pending', 'Inquiry'].includes(o.status)),
     inventory = data.products.reduce(
       (n, p) => n + Math.round((stock(p) * Number(p.cost_paisa)) / 1000),
       0
@@ -246,7 +243,10 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                 </span>
                 <span>
                   <b>Pending orders</b>
-                  <small>{pending.length} waiting for your team</small>
+                  <small>
+                    {pending.filter(o => o.status === 'Pending').length} pending ·{' '}
+                    {pending.filter(o => o.status === 'Inquiry').length} WhatsApp inquiries
+                  </small>
                 </span>
                 <strong>{pending.length}</strong>
                 <ChevronRight size={15} />

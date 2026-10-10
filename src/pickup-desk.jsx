@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ShoppingBag, CheckCircle2 } from 'lucide-react';
-const money = n => 'Rs ' + (Number(n) / 100).toLocaleString('en-PK');
+import { post, seg } from './lib/api.js';
+import { formatPaisa as money, formatQty } from './lib/money.js';
+const METHODS = [
+  'Cash on pickup',
+  'POS card on pickup',
+  'JazzCash transfer',
+  'Easypaisa transfer',
+  'Bank transfer',
+];
 export default function PickupDesk({ orders, onComplete, onError }) {
   const [order, setOrder] = useState(null),
     [method, setMethod] = useState('Cash on pickup'),
@@ -12,7 +20,7 @@ export default function PickupDesk({ orders, onComplete, onError }) {
   const pending = orders.filter(o => o.fulfillment === 'Pickup' && o.status === 'Pending');
   function open(o) {
     setOrder(o);
-    setMethod(o.payment_method || 'Cash on pickup');
+    setMethod(METHODS.includes(o.payment_method) ? o.payment_method : 'Cash on pickup');
     setReceived(String(Number(o.total_paisa) / 100));
     setReference('');
     setError('');
@@ -22,19 +30,12 @@ export default function PickupDesk({ orders, onComplete, onError }) {
     setBusy(true);
     setError('');
     try {
-      let r = await fetch('/api/orders/' + order.id + '/ClosePickup', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          paymentCollected: true,
-          paymentMethod: method,
-          received,
-          verifiedReference: reference,
-        }),
+      const j = await post('/orders/' + seg(order.id) + '/ClosePickup', {
+        paymentCollected: true,
+        paymentMethod: method,
+        received,
+        verifiedReference: reference,
       });
-      let j = await r.json();
-      if (!r.ok) throw Error(j.error);
       setOrder(null);
       await onComplete(j.receipt);
     } catch (e) {
@@ -64,7 +65,7 @@ export default function PickupDesk({ orders, onComplete, onError }) {
                   {o.id} · {o.customer_phone}
                 </small>
                 <small>
-                  {o.items.map(i => i.name + ' × ' + Number(i.qty_milli) / 1000).join(', ')}
+                  {o.items.map(i => i.name + ' × ' + formatQty(i.qty_milli)).join(', ')}
                 </small>
               </div>
               <b>{money(o.total_paisa)}</b>
@@ -96,13 +97,7 @@ export default function PickupDesk({ orders, onComplete, onError }) {
               <label>
                 Actual payment method
                 <select value={method} onChange={e => setMethod(e.target.value)}>
-                  {[
-                    'Cash on pickup',
-                    'POS card on pickup',
-                    'JazzCash transfer',
-                    'Easypaisa transfer',
-                    'Bank transfer',
-                  ].map(v => (
+                  {METHODS.map(v => (
                     <option key={v}>{v}</option>
                   ))}
                 </select>

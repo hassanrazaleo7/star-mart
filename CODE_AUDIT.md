@@ -9,6 +9,8 @@
 | **Method** | Every server module read end to end; the frontend, tests, build config and assets read in full; a second independent review of the server layer to cross-check severities; `npm audit` run against the lockfile. No source files were modified. |
 | **Findings** | 49 total: **1 Critical · 9 High · 19 Medium · 18 Low · 2 Info** |
 
+> **Remediation record (2026-10-10).** Every finding below has been addressed in the codebase unless its Status cell says otherwise. Highlights: the API was rewritten as a declarative route table with per-route guards, rate limits and transactions; stock is now materialised by triggers and verified by an invariant test; POS checkout is idempotent; guest WhatsApp orders no longer reserve stock and every hold expires; vendors can no longer reprice stocked products; security headers ship with a Report-Only CSP; the client was split into lazy portal chunks with shared libraries; 20 new test cases cover the gaps listed in T1. Open items: the CSP must be switched from Report-Only after a monitoring week, three transitive `npm audit` advisories remain in `firebase`/`firebase-admin`/Vite, and the Firebase sign-in success path still has no automated test.
+
 **How to read this document.** Findings are grouped by area and numbered (S = security & abuse, C = correctness & business logic, P = performance, M = maintainability, T = tests, D = dependencies & deploy). Each has a severity, a priority, an effort size, a location, verbatim evidence from the source, an impact scenario, a concrete fix and a way to verify it. Section 5 gives code-level sketches for the twelve highest-value fixes; Section 6 sequences all of them into four phases; the appendices hold the endpoint matrix, DDL, test plan, tooling files and the `vercel.json` headers block, ready to copy.
 
 Line references are approximate because the code is written in very long lines (for example `server/api.mjs` line 40 is a single 27,568-character statement). Each location therefore names the function or route rather than relying on a line number.
@@ -116,7 +118,7 @@ Every request pays `await init()` (memoized per instance), then the Origin check
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Critical** | P0 | M | Med | |
+| **Critical** | P0 | M | Med | Fixed |
 
 **Location:** `server/api.mjs` → route `POST /public/whatsapp-order`; `server/orders.mjs` → `placeOrder()`, `reserved()`; consumers `checkout()`, `addAdjustment()` in `api.mjs`, `setStock()`/`catalogAction()` in `server/catalog-actions.mjs`, `returnToVendor()` in `server/vendor-ledger.mjs`.
 
@@ -151,7 +153,7 @@ if(Number(r.rows[0].attempts)>20)throw Object.assign(new Error('Too many attempt
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P0 | S | Low | |
+| **High** | P0 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` routes `/customer/signup`, `POST /customer/orders`, `/password/reset`, `/setup`, `/admin/firebase-login`, `/admin/link`, `/account/password`, `/customer/password`; `server/auth-limits.mjs` → `authLimit()`.
 
@@ -187,7 +189,7 @@ await authLimit(req,'vendor-application',email);
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P1 | S | Low | |
+| **High** | P1 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → `checkout()` (route `POST /checkout`, guard `worker`).
 
@@ -212,7 +214,7 @@ received=b.received===''||b.received==null?(payment==='Credit'?0:total):paisa(b.
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P1 | S | Low | |
+| **High** | P1 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → `saveProduct(b, productId, actor)` (routes `POST /products`, `PUT /products/:id`, allowed for `['admin','vendor']`).
 
@@ -237,7 +239,7 @@ Indices 0 (name), 2 (barcode), 4 (category), 6 (unit), 9 (`cost_paisa`) and 10 (
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P0 | S | Low (headers) / Med (CSP, mitigated by Report-Only) | |
+| **Medium** | P0 | S | Low (headers) / Med (CSP, mitigated by Report-Only) | Fixed (CSP in Report-Only) |
 
 **Location:** `vercel.json` (no `headers` block); `index.html` (no CSP meta); `server/api.mjs` → `json()` (only `content-type` and `cache-control`); `server/account-security.mjs` → `issueReset()`; `src/account-security.jsx` → `PasswordHelp`.
 
@@ -263,7 +265,7 @@ return {path:'/reset-password?token='+token,email:r.email,expiresMinutes:30}
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` routes `/setup` and `POST /accounts`; `server/auth.mjs` → `passwordHash()`, `verify()`; `server/bulk-import.mjs` → customer rows.
 
@@ -291,7 +293,7 @@ export function passwordHash(password,salt){return scryptSync(password,salt,64).
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P0 | S | Low | |
+| **Medium** | P0 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → top of `handleRequest()`.
 
@@ -327,7 +329,7 @@ Set `APP_ORIGINS=https://<production-domain>` in Vercel.
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P1 | S | Low | |
+| **Low** | P1 | S | Low | Fixed (409 wording kept) |
 
 **Location:** `server/api.mjs` routes `/customer/signup`, `/vendor/apply`, `/customer/social`, `/customer/login`, `/account/login`.
 
@@ -351,7 +353,7 @@ if(!account||!verify(String(b.password||''),account.salt,account.password_hash))
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P1 | S | Low (dual-name grace period) | |
+| **Low** | P1 | S | Low (dual-name grace period) | Fixed |
 
 **Location:** `server/auth.mjs` → `cookie()`, `tokenFrom()`; `server/api.mjs` → `customerCookie()`, all session `INSERT`s; `server/db.mjs` (no cleanup).
 
@@ -375,7 +377,7 @@ return `sm_session=${clear?'':token}; HttpOnly; SameSite=Strict; Path=/; ${proce
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → `customerSession()` and routes `/customer/preferences`, `/customer/avatar`, `/customer/overview`, `/customer/password`; `server/customer-auth.mjs`.
 
@@ -399,7 +401,7 @@ if(req.headers.authorization?.startsWith('Bearer '))return customerFrom(req);   
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Partially fixed (transitive advisories remain) |
 
 **Location:** `package.json`, `package-lock.json`.
 
@@ -427,7 +429,7 @@ if(req.headers.authorization?.startsWith('Bearer '))return customerFrom(req);   
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 **Location:** `src/shop.jsx` → `checkout()` (writes `star-checkout-details`, `star-order-attempt`) and the session-restore effect (reads and removes `star-checkout-details`).
 
@@ -447,7 +449,7 @@ if(req.headers.authorization?.startsWith('Bearer '))return customerFrom(req);   
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Info** | P3 | S | Low | |
+| **Info** | P3 | S | Low | Fixed |
 
 - **CSV formula injection** — `src/vendor.jsx` `csvDownload` quotes fields but does not neutralize leading `=`, `+`, `-`, `@`; a product named `=HYPERLINK(...)` executes when the export is opened in Excel. Prefix such cells with `'`.
 - **Guest name becomes the audit actor** — `api.mjs` `setActor('WhatsApp guest: '+customer.name)` stores free text in `activity_events.actor`. React escapes it in the admin, so no XSS, but store the guest id instead of the name.
@@ -461,7 +463,7 @@ if(req.headers.authorization?.startsWith('Bearer '))return customerFrom(req);   
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Info** | P3 | S | Low | |
+| **Info** | P3 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → `imageBody()`, routes `POST /products/:id/image`, `POST /customer/avatar`, `GET /images/:id`.
 
@@ -474,7 +476,7 @@ Magic-byte sniffing (JPEG/PNG/WebP only, no SVG), the 1 MB cap and `X-Content-Ty
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P0 (client) / P1 (server) | M | Low–Med | |
+| **High** | P0 (client) / P1 (server) | M | Low–Med | Fixed |
 
 **Location:** `src/main.jsx` → `action()`, `checkout()`; `server/api.mjs` → `checkout()`.
 
@@ -504,7 +506,7 @@ Compare `server/orders.mjs` `placeOrder`, which already implements `requestKey` 
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P0 | S | Low | |
+| **High** | P0 | S | Low | Fixed |
 
 **Location:** `server/db.mjs` → `init()`.
 
@@ -540,7 +542,7 @@ Store the version in a one-row `schema_meta(key,value)` table so steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High (PGlite) / Medium (pg)** | P1 | M | Low (mechanical) | |
+| **High (PGlite) / Medium (pg)** | P1 | M | Low (mechanical) | Fixed |
 
 **Location:** `server/db.mjs` → `tx()`; `server/api.mjs` routes `/customer/signup`, `/customer/login`, `/customer/social` (session insert), `/login`, `/account/login`, `/admin/firebase-login`, `/admin/link`, `/customer/logout`, `/logout`, `/customer/avatar` POST, `/products/:id/image` (two statements), `/vendor/applications/:id/reject`, `POST /accounts`, `PATCH /accounts/:id`, `POST /vendors`, `PUT /vendors/:id`, `POST /expenses`; `server/catalog-actions.mjs` is fine (uses `tx`).
 
@@ -569,7 +571,7 @@ let r=await (await db()).query('INSERT INTO expenses(id,category,description,amo
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `server/db.mjs` → `db()`, `tx()`.
 
@@ -600,7 +602,7 @@ catch(e){try{await c.query('ROLLBACK')}catch{} c.release(e); throw e}
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `server/db.mjs` schema (`sku TEXT UNIQUE, barcode TEXT UNIQUE`); `server/catalog-actions.mjs` → `catalogAction()`; `server/bulk-import.mjs` → product rows.
 
@@ -628,7 +630,7 @@ catch(e){try{await c.query('ROLLBACK')}catch{} c.release(e); throw e}
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P2 | M | Low | |
+| **Medium** | P2 | M | Low | Fixed |
 
 **Location:** `server/import.mjs` → `importLegacy()`; `vercel.json` (`maxDuration: 30`); `server/api.mjs` → `body()` (2 MB cap).
 
@@ -652,7 +654,7 @@ if(data.products.length>10000||data.purchases.length+data.sales.length>100000)th
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `server/customer-ledger.mjs` → `customerOverview()`; `server/orders.mjs` → `changeOrder()` (writes `note='Order '+order.id`).
 
@@ -675,7 +677,7 @@ if(data.products.length>10000||data.purchases.length+data.sales.length>100000)th
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `src/main.jsx` → `CreditCollection`.
 
@@ -693,7 +695,7 @@ if(data.products.length>10000||data.purchases.length+data.sales.length>100000)th
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `src/shop.jsx` → `setFulfillment()` (clears `paymentReference`), the `star-checkout-details` restore effect, and the `/api/customer/preferences` effect.
 
@@ -713,7 +715,7 @@ if(data.products.length>10000||data.purchases.length+data.sales.length>100000)th
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P0 | S | Low | |
+| **Medium** | P0 | S | Low | Fixed |
 
 **Location:** `server/db.mjs` → `db()`; every file in `tests/`.
 
@@ -737,7 +739,7 @@ export async function db(){if(process.env.DATABASE_URL){pool ||= new Pool(...);r
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P1 | S | Low | |
+| **Low** | P1 | S | Low | Fixed |
 
 **Location:** `server/orders.mjs` → `changeOrder()` (`ClosePickup`).
 
@@ -760,7 +762,7 @@ let received=paisa(body.received,'Amount received');if(received<Number(order.tot
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P0 | S | Low | |
+| **Low** | P0 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → `body()` and the catch-all at the end of `handleRequest()`; `server/money.mjs` (throws plain `Error`).
 
@@ -784,7 +786,7 @@ let status=e.status||((e.code==='23505')?409:500);if(status===500&&/must be|supp
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P0–P2 | S each | Low | |
+| **Low** | P0–P2 | S each | Low | Fixed |
 
 | # | Where | Glitch | Fix |
 |---|---|---|---|
@@ -809,7 +811,7 @@ let status=e.status||((e.code==='23505')?409:500);if(status===500&&/must be|supp
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 **Location:** `src/shop.jsx` → `add()`, `adjust()`; `src/main.jsx` → `add()`, `updateCart()`.
 
@@ -825,7 +827,7 @@ let status=e.status||((e.code==='23505')?409:500);if(status===500&&/must be|supp
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P1 | S | Low | |
+| **Low** | P1 | S | Low | Fixed |
 
 **Location:** `dev.mjs`; `server/store-settings.mjs` line 4.
 
@@ -852,7 +854,7 @@ const defaults={...,jazzcash:process.env.VITE_JAZZCASH_ACCOUNT||'',easypaisa:pro
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 - **Receipt and order ids** — `'SM-'+Date.now().toString(36)+'-'+id().slice(0,4)` (`api.mjs` `checkout`, `orders.mjs` `placeOrder`/`changeOrder`): two sales in the same millisecond collide with probability 1/65,536 and the primary key turns it into a confusing 409. Use 8 hex characters (`id().slice(0,8)`) or a per-day sequence.
 - **Vendor returns against paid purchases** (`vendor-ledger.mjs` `vendorLedger`, `api.mjs` `/vendor/payments`): a return is credited regardless of whether the purchase was `Paid`, so the balance goes negative with no "vendor owes us" state or refund entry. Add a `vendor_refunds` entry type or surface negative balances explicitly.
@@ -864,7 +866,7 @@ const defaults={...,jazzcash:process.env.VITE_JAZZCASH_ACCOUNT||'',easypaisa:pro
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 - **Firebase sign-in inside `shop.jsx`** (`google()`, the phone-OTP, Firebase-email and reset branches of `authSubmit`) signs into Firebase but never calls `setUser`; `onAuthStateChanged` is imported and unused. The whole `authOpen` modal is unreachable (`setAuthOpen(true)` is never called and `main.jsx` passes `initialSignup={false}`), as are the orders modal (`openOrders` never called) and the vendor-apply modal (`setVendorOpen(true)` never called). The live sign-in lives in `auth-pages.jsx` and works. Delete the dead modal code or wire it up; it is ≈40 % of `shop.jsx`.
 - **Quantity display** — `admin-workflow.jsx` and `vendor-admin.jsx` use `Math.round(qty_milli/1000)`, so 0.5 kg shows as "1" (or "0"); `main.jsx` `Q()` shows three decimals; `admin-catalog.jsx` labels any fraction "Old stock needs correction" and its "Set stock" input is `step="1"` although `unit` offers kg and litre. Pick one formatter (`src/lib/quantity.js`) and allow `step="0.001"` for non-piece units.
@@ -877,7 +879,7 @@ const defaults={...,jazzcash:process.env.VITE_JAZZCASH_ACCOUNT||'',easypaisa:pro
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P1 | S | Low | |
+| **High** | P1 | S | Low | Fixed |
 
 **Location:** `server/api.mjs` → route `GET /live/version`; `src/live.js` → `useLiveRefresh()` (used by `main.jsx`, `shop.jsx`, `vendor.jsx`, `customer-dashboard.jsx`, `daily-sales.jsx`); `server/db.mjs` (`max: process.env.VERCEL ? 1 : 5`).
 
@@ -903,7 +905,7 @@ export function useLiveRefresh(refresh,interval=3000){ ... let timer=setInterval
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P1 (dedupe) / P2 (bounding) | S + M | Low / Med | |
+| **High** | P1 (dedupe) / P2 (bounding) | S + M | Low / Med | Fixed |
 
 **Location:** `server/api.mjs` → `state()`; `src/main.jsx` → `refresh()`, `action()`, `useLiveRefresh` call.
 
@@ -928,7 +930,7 @@ async function refresh(){let me=await api('/me');if(me.user.role==='vendor')retu
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P2 | L | Med (mitigated by invariant test) | |
+| **Medium** | P2 | L | Med (mitigated by invariant test) | Fixed |
 
 **Location:** `server/orders.mjs` → `publicProducts()`, `reserved()`, `placeOrder()`, `changeOrder()`; `server/api.mjs` → `checkout()`, `addAdjustment()`, `state()`; `server/catalog-actions.mjs` → `setStock()`; `server/vendor-ledger.mjs` → `returnToVendor()`.
 
@@ -952,7 +954,7 @@ SELECT p.id,...,p.description,p.price_paisa,COALESCE(m.stock_milli,0)-COALESCE(o
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P2 | M | Low | |
+| **Medium** | P2 | M | Low | Fixed |
 
 **Location:** `server/customer-ledger.mjs` → `listCustomers()`; `server/api.mjs` → `/vendor/overview`; `server/db.mjs` triggers; `server/activity.mjs`.
 
@@ -978,7 +980,7 @@ d.query('SELECT m.* FROM stock_movements m JOIN products p ON p.id=m.product_id 
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S | Low | |
+| **Medium** | P1 | S | Low | Fixed |
 
 **Location:** `server/db.mjs` → `init()`.
 
@@ -1014,7 +1016,7 @@ d.query('SELECT m.* FROM stock_movements m JOIN products p ON p.id=m.product_id 
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P2 | M | Low | |
+| **Medium** | P2 | M | Low | Fixed |
 
 **Location:** `src/shop.jsx` → `Shop` (47 `useState`, 8 `useEffect`); `src/main.jsx` → `App` (35 `useState`), `Reports`; `src/admin-workflow.jsx` → `RecordTable.textOf`; `src/bulk-import.jsx` → `unzipSync`; `src/vendor.jsx`, `src/vendor-admin.jsx` per-row `find`.
 
@@ -1034,7 +1036,7 @@ d.query('SELECT m.* FROM stock_movements m JOIN products p ON p.id=m.product_id 
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S–M | Low | |
+| **Low** | P2 | S–M | Low | Fixed (API caching unchanged) |
 
 - **No code-splitting:** `main.jsx` statically imports the admin, vendor, storefront, dashboard and `firebase.js`; there is no `React.lazy` anywhere, so a shopper downloads the POS and the Firebase Auth SDK. Only the zxing scanner is lazy.
 - **Fonts:** `admin-premium.css`, `customer-dashboard.css`, `market.css` and `style.css` each `@import` Google Fonts — four third-party stylesheet requests before first paint, and four origins a future CSP must allow.
@@ -1052,7 +1054,7 @@ d.query('SELECT m.* FROM stock_movements m JOIN products p ON p.id=m.product_id 
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P0 (with C2) | S | Low | |
+| **Low** | P0 (with C2) | S | Low | Fixed |
 
 Covered by the fix for C2: a `schema_meta` version row turns the steady-state cold start into one `SELECT`.
 
@@ -1064,7 +1066,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **High** | P3 | L | Low per step (fallthrough) | |
+| **High** | P3 | L | Low per step (fallthrough) | Fixed |
 
 **Location:** `server/api.mjs` → `handleRequest()` (line 40).
 
@@ -1084,7 +1086,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P0 | S | Low | |
+| **Medium** | P0 | S | Low | Fixed |
 
 **Evidence (import graph over `src/`, see Appendix F for the greps):**
 
@@ -1113,7 +1115,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P2 | M | Low | |
+| **Medium** | P2 | M | Low | Mostly fixed (focus traps still hand-written) |
 
 | Duplicated | Copies | Divergence |
 |---|---|---|
@@ -1134,7 +1136,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1 | S (setup) + M (format commit) | Low | |
+| **Medium** | P1 | S (setup) + M (format commit) | Low | Fixed |
 
 **Evidence:** no `eslint*`, `.prettierrc`, `tsconfig.json`, `biome.json`, `.editorconfig` or `.github/`; `package.json` has no `lint` script; `jsconfig.json` only maps `@/*`. Longest lines: `server/api.mjs` 27,568 chars, `src/main.jsx` 5,832, `src/shop.jsx` 3,430, `src/vendor.jsx` 2,318. Magic numbers: `3000` (poll), `3500` (toast), `5000`/`300000`/`100` (loyalty, also in `loyalty-policy.mjs` as named constants but repeated as literals in `api.mjs` and the client), `'Asia/Karachi'` in four server files, `864e5`, `900`/`0.82` (image resize), `1_000_000`/`2_000_000` (body caps). Client role gating by matching server prose: `e.message.includes('sign in')` (`main.jsx` L52).
 
@@ -1148,7 +1150,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P0–P2 | S | Low | |
+| **Low** | P0–P2 | S | Low | Fixed |
 
 - shadcn components use `animate-in`, `fade-in-0`, `zoom-in-95` (`dialog.jsx`, `alert-dialog.jsx`, `dropdown-menu.jsx`, `tooltip.jsx`) but `tw-animate-css` is not installed or imported, so the animations silently do nothing.
 - `components.json` declares an `@/hooks` alias; `src/hooks` does not exist.
@@ -1165,7 +1167,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P3 | S | Low | |
+| **Low** | P3 | S | Low | Fixed |
 
 **Location:** `src/main.jsx` L112 (path switch).
 
@@ -1181,7 +1183,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1–P2 | M | Low | |
+| **Medium** | P1–P2 | M | Low | Mostly fixed (Firebase success path and pg Pool branch untested) |
 
 **What exists (8 files, all against a temp-dir PGlite through the real `handle()` or the order functions):** money maths; product → purchase → checkout → adjustment → expense flow with stock arithmetic; oversell rollback; duplicate barcode 409; legacy import; one cross-origin `/login` 403; order reservation/cancel/fulfil rules; customer signup/login/logout and session isolation; credit ledger and loyalty rules; vendor isolation and image round-trip; staff/vendor 403 matrix; bulk import skip/conflict rules; transfer-payment verification.
 
@@ -1204,7 +1206,7 @@ Covered by the fix for C2: a `schema_meta` version row turns the steady-state co
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P2 | S | Low | |
+| **Low** | P2 | S | Low | Fixed |
 
 The fake request has no `socket`, so `authLimit` always keys on `'local'`; add `socket:{remoteAddress:'127.0.0.1'}` and a way to set `x-forwarded-for`. Seed through the API, not raw SQL, so validation is part of the fixture. Assert on `set-cookie` attributes, not just presence.
 
@@ -1216,7 +1218,7 @@ The fake request has no `socket`, so `authLimit` always keys on `'local'`; add `
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Medium** | P1–P2 | S–M | Low | |
+| **Medium** | P1–P2 | S–M | Low | Mostly fixed (single function kept) |
 
 **Location:** `vercel.json`, `api/index.js`, `server/db.mjs`, `server/bulk-import.mjs`, `server/import.mjs`.
 
@@ -1232,7 +1234,7 @@ The fake request has no `socket`, so `authLimit` always keys on `'local'`; add `
 
 | Severity | Priority | Effort | Regression risk | Status |
 |---|---|---|---|---|
-| **Low** | P1 | S | Low | |
+| **Low** | P1 | S | Low | Fixed |
 
 `dev.mjs` listens on port 8787 on all interfaces (the API is reachable from the LAN) while Vite is bound to `127.0.0.1`; pass `'127.0.0.1'` to `api.listen`. On `SIGINT` it does not await `api.close()` and never calls `close()` from `db.mjs`, so PGlite is not flushed cleanly. See C15 for the env-loading order.
 
