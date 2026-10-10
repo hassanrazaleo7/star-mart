@@ -65,6 +65,7 @@ import { resizeToJpeg } from './lib/image.js';
 import { configured as firebaseConfigured, loadFirebase } from './firebase-config.js';
 import './admin-theme.css';
 import './style.css';
+import './auth-pages.css';
 import './admin-premium.css';
 import './brand.css';
 import './admin-workflow.css';
