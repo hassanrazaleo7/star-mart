@@ -662,11 +662,15 @@
 .market .benefits-row > div {
   display: grid;
   grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto;
   column-gap: 14px;
+  row-gap: 3px;
   align-items: center;
+  align-content: center;
 }
 .market .benefits-row span {
   grid-row: 1 / 3;
+  align-self: center;
   width: 48px;
   height: 48px;
   border-radius: 14px;
@@ -703,11 +707,15 @@
 .market .benefits-row strong {
   font-size: 15px;
   font-weight: 700;
+  line-height: 1.25;
   color: #101513;
+  align-self: end;
 }
 .market .benefits-row small {
   font-size: 13px;
+  line-height: 1.35;
   color: var(--home-muted);
+  align-self: start;
 }
 
 /* ---------- Footer ---------- */
