@@ -1,3 +1,4 @@
+import SupplierOverview from './supplier-overview.jsx';
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Search, Store, Mail, Phone, MapPin, UserRound } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -5,6 +6,7 @@ import { get, post, seg } from './lib/api.js';
 import { formatPaisa as money, formatQty, formatDate, lineTotalPaisa } from './lib/money.js';
 import './vendor.css';
 import './vendor-admin.css';
+import './ux-refinement.css';
 const amount = p => lineTotalPaisa(p.qty_milli, p.unit_cost_paisa);
 const EMPTY_ACCOUNT = {
   ledger: { entries: [], summary: {} },
@@ -207,6 +209,7 @@ export default function VendorManagement({
               </button>
             ))}
           </nav>
+          {tab === 'details' && <SupplierOverview products={catalog} sales={account.sales} summary={summary} onProducts={()=>setTab('products')} onStatement={()=>setTab('statement')}/>}
           {tab === 'details' && (
             <section className="vh-card">
               <h3>Business & account details</h3>

@@ -76,6 +76,7 @@ import './brand.css';
 import './admin-workflow.css';
 import './owner-workspace.css';
 import './admin-simple.css';
+import './ux-refinement.css';
 
 // Portals outside the admin shell load on demand so the POS never downloads the storefront, and vice versa.
 const Shop = lazy(() => import('./shop.jsx'));

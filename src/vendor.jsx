@@ -1,3 +1,4 @@
+import SupplierOverview from './supplier-overview.jsx';
 import { ProductReview } from './owner-workspace.jsx';
 import './owner-workspace.css';
 import { BarcodeCamera } from './barcode-scanner.jsx';
@@ -23,6 +24,7 @@ import {
 import './vendor.css';
 import ProductEditor from './product-editor.jsx';
 import './mobile-responsive.css';
+import './ux-refinement.css';
 import { useLiveRefresh } from './live.js';
 import { get, post, put, seg, upload } from './lib/api.js';
 import { resizeToJpeg } from './lib/image.js';
@@ -342,80 +344,7 @@ export default function VendorPanel({ onLogout }) {
           <>
             {view === 'overview' && (
               <>
-                <section className="vp-hero">
-                  <div>
-                    <span>YOUR PARTNERSHIP WITH STAR MART</span>
-                    <h2>
-                      Every delivery.
-                      <br />
-                      Every rupee accounted for.
-                    </h2>
-                    <p>
-                      Stock supplied, customer sales and payments to you are tracked separately.
-                    </p>
-                    <button onClick={() => setView('statement')}>View supplier statement</button>
-                  </div>
-                  <img src="/vendor-grocery.jpg" alt="Grocery shelves" />
-                </section>
-                <div className="vp-metrics">
-                  {[
-                    ['Catalog items', products.length],
-                    [
-                      'Stock available',
-                      qty(products.reduce((n, p) => n + Number(p.stock_milli), 0)),
-                    ],
-                    ['Units sold', qty(sales.reduce((n, p) => n + Number(p.qty_milli), 0))],
-                    [
-                      Number(summary.balance) < 0 ? 'Vendor credit held' : 'Store owes you',
-                      money(Math.abs(summary.balance || 0)),
-                    ],
-                  ].map(([k, v]) => (
-                    <article key={k}>
-                      <small>{k}</small>
-                      <strong>{v}</strong>
-                    </article>
-                  ))}
-                </div>
-                <div className="vp-grid">
-                  <section className="vp-card">
-                    <div className="vp-head">
-                      <h2>Low stock watch</h2>
-                      <AlertTriangle size={20} />
-                    </div>
-                    {low.slice(0, 6).map(p => (
-                      <div className="vp-line" key={p.id}>
-                        <span>
-                          {p.name}
-                          <small>
-                            Reorder at {qty(p.reorder_milli)} {p.unit}
-                          </small>
-                        </span>
-                        <b className="vp-alert">{qty(p.stock_milli)} left</b>
-                      </div>
-                    ))}
-                    {!low.length && <p>All products are above their reorder levels.</p>}
-                  </section>
-                  <section className="vp-card">
-                    <h2>Latest supplier entries</h2>
-                    {ledger.entries
-                      .slice(-6)
-                      .reverse()
-                      .map(x => (
-                        <div className="vp-line" key={x.id}>
-                          <span>
-                            {x.type}
-                            <small>
-                              {when(x.date)} · {x.reference}
-                            </small>
-                          </span>
-                          <b>{money(x.debit || x.credit)}</b>
-                        </div>
-                      ))}
-                    {!ledger.entries.length && (
-                      <p>Your first stock receipt will start this statement.</p>
-                    )}
-                  </section>
-                </div>
+                <SupplierOverview products={products} sales={sales} summary={summary} onProducts={()=>setView('products')} onStatement={()=>setView('statement')}/>
               </>
             )}
             {view === 'products' && (
