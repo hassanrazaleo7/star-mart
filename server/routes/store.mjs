@@ -1,4 +1,6 @@
-import { route, ok } from '../router.mjs';
+import { submissions, reviewSubmission } from '../product-review.mjs';
+import { shiftOverview, openShift, closeShift } from '../staff-shifts.mjs';
+import { route, ok, raw } from '../router.mjs';
 import { db, tx } from '../db.mjs';
 import { id, passwordHashAsync, checkPassword, clearCookies } from '../auth.mjs';
 import { fail } from '../errors.mjs';
@@ -24,6 +26,24 @@ import { checkout, addPurchase, addAdjustment } from '../checkout.mjs';
 import { GROCERY_CATEGORIES, GROCERY_TAXONOMY } from '../../src/grocery-categories.mjs';
 
 const HEX = '([a-f0-9]+)';
+route('GET', '/product-submissions', { auth: 'session' }, async ({ user }) =>
+  ok(await submissions(user))
+);
+route(
+  'POST',
+  new RegExp(`^/product-submissions/${HEX}/review$`),
+  { auth: 'owner', body: 'json' },
+  async ({ params, body, user }) => ok(await reviewSubmission(params[0], body, user))
+);
+route('GET', '/shifts', { auth: 'worker' }, async ({ user }) => ok(await shiftOverview(user)));
+route('POST', '/shifts/open', { auth: 'worker', body: 'json' }, async ({ user, body }) => {
+  if (user.role !== 'staff')
+    throw fail('Use your individual staff account to open a counter shift.', 403);
+  return ok(await openShift(user, body), 201);
+});
+route('POST', '/shifts/close', { auth: 'worker', body: 'json' }, async ({ user, body }) =>
+  ok(await closeShift(user, body))
+);
 
 route(
   'POST',
@@ -52,8 +72,11 @@ route('GET', '/customers', { auth: 'worker' }, async ({ query }) =>
     customers: await listCustomers({ search: query.get('q') || '', limit: query.get('limit') }),
   })
 );
-route('POST', '/customers/credit-payment', { auth: 'worker', body: 'json' }, async ({ body: b }) =>
-  ok(await collectCredit(b), 201)
+route(
+  'POST',
+  '/customers/credit-payment',
+  { auth: 'worker', body: 'json' },
+  async ({ body: b, user }) => ok(await collectCredit(b, user), 201)
 );
 route('GET', new RegExp(`^/customers/${HEX}/overview$`), { auth: 'worker' }, async ({ params }) =>
   ok(await customerOverview(params[0]))
@@ -310,6 +333,21 @@ route(
       user.role === 'vendor' ? [params[0], user.vendor_id] : [params[0]]
     );
     if (!owned.rows.length) throw fail('Product not found', 404);
+    if (user.role !== 'admin') {
+      const pending = (
+        await c.query(
+          "SELECT id FROM product_submissions WHERE product_id=$1 AND submitted_by=$2 AND status='Pending' FOR UPDATE",
+          [params[0], user.id]
+        )
+      ).rows[0];
+      if (!pending) throw fail('Submit your product changes before uploading a review photo.', 409);
+      await c.query('UPDATE product_submissions SET image_data=$1,image_mime=$2 WHERE id=$3', [
+        image.data,
+        image.mime,
+        pending.id,
+      ]);
+      return ok({ image: '/api/submission-images/' + pending.id, pending: true });
+    }
     return ok({ image: await storeImage(c, params[0], image.data, image.mime) });
   }
 );
@@ -329,7 +367,7 @@ route(
   'POST',
   /^\/orders\/([A-Za-z0-9-]+)\/([A-Za-z]+)$/,
   { auth: 'worker', body: 'json' },
-  async ({ params, body: b, user }) => ok(await changeOrder(params[0], params[1], b, user.role))
+  async ({ params, body: b, user }) => ok(await changeOrder(params[0], params[1], b, user))
 );
 route(
   'POST',
@@ -416,3 +454,29 @@ route('POST', '/expenses', { auth: 'owner', body: 'json', tx: true }, async ({ b
   );
   return ok(r.rows[0], 201);
 });
+
+route(
+  'GET',
+  new RegExp(`^/submission-images/${HEX}$`),
+  { auth: 'session' },
+  async ({ params, user }) => {
+    const row = (
+      await (
+        await db()
+      ).query('SELECT image_data,image_mime,submitted_by FROM product_submissions WHERE id=$1', [
+        params[0],
+      ])
+    ).rows[0];
+    if (!row?.image_data || (user.role !== 'admin' && row.submitted_by !== user.id))
+      throw fail('Image not found', 404);
+    return raw(
+      200,
+      {
+        'content-type': row.image_mime,
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+      },
+      Buffer.from(row.image_data)
+    );
+  }
+);
