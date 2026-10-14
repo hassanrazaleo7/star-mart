@@ -2,6 +2,7 @@ import { PasswordChange } from './account-security.jsx';
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, Wallet, Gift, CalendarDays, ReceiptText, LogOut } from 'lucide-react';
 import './customer-dashboard.css';
+import './ux-refinement.css';
 import { useLiveRefresh } from './live.js';
 
 import { get, post } from './lib/api.js';

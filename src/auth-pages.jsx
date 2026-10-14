@@ -3,6 +3,7 @@ import { UserRound, ShoppingBag, Eye, EyeOff, Store, Mail, LockKeyhole } from 'l
 import { configured, loadFirebase } from './firebase-config.js';
 import { api } from './lib/api.js';
 import './auth-pages.css';
+import './ux-refinement.css';
 
 const request = (path, payload, token) =>
   api(path, {
