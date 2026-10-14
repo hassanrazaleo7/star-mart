@@ -270,21 +270,14 @@ export default function VendorPanel({ onLogout }) {
         </a>
         <div className="vp-label">SUPPLIER WORKSPACE</div>
         <nav>
-          {nav.map(([key, label, Icon]) => (
-            <button
-              key={key}
-              className={view === key ? 'active' : ''}
-              onClick={() => {
-                setView(key);
-                setSidebarOpen(false);
-                setError('');
-              }}
-            >
-              <Icon size={18} />
-              {label}
-              {key === 'products' && <em>{products.length}</em>}
-            </button>
-          ))}
+          {[
+            ['Daily Work',['overview','products','demand']],
+            ['Stock',['purchases','movements']],
+            ['Finance',['sales','statement']],
+          ].map(([heading,keys])=><section className="sm-sidebar-group" key={heading}>
+            <h2>{heading}</h2>
+            {keys.map(key=>nav.find(item=>item[0]===key)).filter(Boolean).map(([key,label,Icon])=><button key={key} className={view===key?'active':''} onClick={()=>{setView(key);setSidebarOpen(false);setError('');}}><Icon size={18}/><span>{label}</span>{key==='products'&&<em>{products.length}</em>}</button>)}
+          </section>)}
         </nav>
         <div className="vp-bottom">
           <div className="vp-avatar">{data?.vendor?.name?.slice(0, 1) || 'V'}</div>

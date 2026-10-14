@@ -1222,13 +1222,19 @@ function App({ portal }) {
         </div>
         <div className="side-label">STORE WORKSPACE</div>
         <nav>
-          {visibleNav.map(([key, label, Icon]) => (
-            <button key={key} onClick={() => go(key)} className={view === key ? 'active' : ''}>
-              <Icon size={19} />
-              <span>{label}</span>
-              {key === 'products' && low.length > 0 && <em>{low.length}</em>}
-            </button>
-          ))}
+          {[
+            ['Daily Work',['dashboard','pos','products','stock','orders']],
+            ['People',['customers','vendors','accounts']],
+            ['Finance',['sales','purchases','expenses','reports']],
+            ['Management',['bulk','adjustments','activity']],
+            ['Settings',['settings']],
+          ].map(([heading,keys])=>{
+            const items=keys.map(key=>visibleNav.find(item=>item[0]===key)).filter(Boolean);
+            return items.length ? <section className="sm-sidebar-group" key={heading}>
+              <h2>{heading}</h2>
+              {items.map(([key,label,Icon])=><button key={key} onClick={()=>go(key)} className={view===key?'active':''}><Icon size={19}/><span>{label}</span>{key==='products'&&low.length>0&&<em>{low.length}</em>}</button>)}
+            </section>:null;
+          })}
         </nav>
         <div className="side-footer">
           <div className="profile">
