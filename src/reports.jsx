@@ -1,3 +1,4 @@
+import { reportSheets, downloadExcel, downloadPdf } from './lib/report-download.js';
 import React, { useEffect, useState } from 'react';
 import { Package, CalendarDays } from 'lucide-react';
 import { Badge as UiBadge } from '@/components/ui/badge';
@@ -17,11 +18,13 @@ function Empty({ text }) {
   );
 }
 // Date-range reporting computed by the server (sales, margin, expenses, top products) plus live stock alerts.
-export default function Reports({ products, purchases, low, stock, refreshToken }) {
+export default function Reports({ products, vendors = [], purchases, low, stock, refreshToken }) {
   const [from, setFrom] = useState(firstOfPreviousMonth),
     [to, setTo] = useState(() => localDay()),
     [report, setReport] = useState(null),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [exporting, setExporting] = useState(false),
+    [scope, setScope] = useState('All reports');
   useEffect(() => {
     let active = true;
     get('/reports/range?from=' + from + '&to=' + to)
@@ -31,10 +34,27 @@ export default function Reports({ products, purchases, low, stock, refreshToken 
       active = false;
     };
   }, [from, to, refreshToken]);
-  const inventory = products.reduce(
-    (n, p) => n + Math.round((stock(p) * Number(p.cost_paisa)) / 1000),
-    0
-  );
+  async function download(format) {
+    if (!report) return;
+    setExporting(true);
+    setError('');
+    try {
+      const fresh = await get('/reports/range?from=' + from + '&to=' + to);
+      let sheets = reportSheets({ report: fresh, products, vendors, stock });
+      if (scope !== 'All reports') sheets = sheets.filter(s => s.name === scope);
+      await (format === 'xlsx' ? downloadExcel : downloadPdf)(
+        sheets,
+        report.from + '-to-' + report.to
+      );
+    } catch (e) {
+      setError('Download failed: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+  const inventory = products
+    .filter(p => !p.deleted_at)
+    .reduce((n, p) => n + Math.round((stock(p) * Number(p.cost_paisa)) / 1000), 0);
   const expiring = purchases.filter(
     x => x.expiry && new Date(x.expiry).getTime() - Date.now() <= 30 * 864e5
   );
@@ -51,6 +71,50 @@ export default function Reports({ products, purchases, low, stock, refreshToken 
     : [];
   return (
     <>
+      <div className="ow-panel sm-report-download">
+        <div>
+          <h2>Download reports</h2>
+          <p>
+            Excel or PDF. Sales follow the date range below; Products and Stock are current
+            snapshots.
+          </p>
+        </div>
+        <div className="sm-report-download-actions">
+          <select
+            aria-label="Report to download"
+            value={scope}
+            onChange={e => setScope(e.target.value)}
+          >
+            {[
+              'All reports',
+              'Summary',
+              'Daily sales',
+              'Payment methods',
+              'Top selling products',
+              'Categories',
+              'Expenses',
+              'Products',
+              'Stock',
+            ].map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <button
+            className="ow-primary"
+            disabled={exporting || !report || report.from !== from || report.to !== to}
+            onClick={() => download('xlsx')}
+          >
+            {exporting ? 'Preparing…' : 'Download Excel'}
+          </button>
+          <button
+            className="ow-primary"
+            disabled={exporting || !report || report.from !== from || report.to !== to}
+            onClick={() => download('pdf')}
+          >
+            Download PDF
+          </button>
+        </div>
+      </div>
       <div className="aw-toolbar report-range">
         <label>
           From
@@ -62,7 +126,7 @@ export default function Reports({ products, purchases, low, stock, refreshToken 
         </label>
         {t && (
           <span>
-            {t.bills} bills · {report.from} → {report.to}
+            {t.bills} bills · {report.from} — {report.to}
           </span>
         )}
       </div>
@@ -231,7 +295,7 @@ export default function Reports({ products, purchases, low, stock, refreshToken 
             </section>
           </div>
           <p className="report-foot">
-            These are management estimates. Supplier balances are shown in Vendors → Payments &amp;
+            These are management estimates. Supplier balances are shown in Vendors — Payments &amp;
             credit, including part payments and return credits. Expiry is based on purchase dates;
             verify remaining quantities physically.
           </p>

@@ -61,7 +61,6 @@ export default function AdminCommand({ nav, onNavigate }) {
                 >
                   <Icon size={17} />
                   {label}
-                  <ArrowUpRight size={15} />
                 </Button>
               ))}
           </div>

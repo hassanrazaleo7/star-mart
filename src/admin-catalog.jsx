@@ -40,6 +40,7 @@ export default function AdminCatalog({
   onRefresh,
   stock,
   onReceive,
+  catalogOnly = false,
 }) {
   let [page, setPage] = useState(1),
     [selected, setSelected] = useState([]),
@@ -362,7 +363,7 @@ export default function AdminCatalog({
                 'Product',
                 'Vendor',
                 'Barcode',
-                'Stock',
+                ...(!catalogOnly ? ['Stock'] : []),
                 'Cost / price',
                 'Status',
                 'Actions',
@@ -403,17 +404,19 @@ export default function AdminCatalog({
                     </td>
                     <td>{vendors.find(v => v.id === p.vendor_id)?.name || 'Unassigned'}</td>
                     <td>{p.barcode || 'Not added'}</td>
-                    <td>
-                      {formatQty(stock(p), p.unit)}
-                      {Number(p.reserved_milli) > 0 && (
-                        <small className="stock-correction">
-                          {formatQty(p.reserved_milli)} reserved by online orders
+                    {!catalogOnly && (
+                      <td>
+                        {formatQty(stock(p), p.unit)}
+                        {Number(p.reserved_milli) > 0 && (
+                          <small className="stock-correction">
+                            {formatQty(p.reserved_milli)} reserved by online orders
+                          </small>
+                        )}
+                        <small>
+                          Vendor available: {formatQty(p.vendor_available_milli || 0, p.unit)}
                         </small>
-                      )}
-                      <small>
-                        Vendor available: {formatQty(p.vendor_available_milli || 0, p.unit)}
-                      </small>
-                    </td>
+                      </td>
+                    )}
                     <td>
                       {money(p.cost_paisa)} / {money(p.price_paisa)}
                       {p.vendor_proposed_price_paisa != null && (
@@ -454,7 +457,7 @@ export default function AdminCatalog({
                     </td>
                     <td>
                       <div className="ac-row-actions">
-                        {!p.deleted_at && (
+                        {!p.deleted_at && !catalogOnly && (
                           <button
                             className="ac-edit"
                             disabled={busy}

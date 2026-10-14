@@ -35,7 +35,7 @@ export default function CategoryDirectory({ selected, onSelect }) {
           </div>
           <div className="category-row-controls">
             <a className="text-link" href="#products">
-              View all products <ArrowUpRight size={18} />
+              View all products
             </a>
             <button
               disabled={edges.start}

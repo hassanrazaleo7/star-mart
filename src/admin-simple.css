@@ -657,3 +657,71 @@
     flex: none;
   }
 }
+.sm-stock-filters {
+  display: grid;
+  grid-template-columns: 1fr 200px 170px;
+  gap: 12px;
+  margin: 20px 0;
+}
+.sm-stock-filters label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sm-stock-filters input {
+  width: 100%;
+}
+.sm-stock-actions {
+  display: flex;
+  gap: 6px;
+}
+.sm-stock-actions button {
+  background: #fff;
+  border: 1px solid #d4dfd7;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #005d48;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.sm-stock-actions button:hover {
+  background: #eaf5ee;
+}
+.sm-report-download {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.sm-report-download h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+.sm-report-download p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #526359;
+}
+.sm-report-download-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+@media (max-width: 750px) {
+  .sm-stock-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sm-stock-filters label {
+    grid-column: 1/-1;
+  }
+  .sm-report-download-actions {
+    width: 100%;
+  }
+  .sm-report-download-actions select {
+    width: 100%;
+  }
+}

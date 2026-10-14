@@ -16,7 +16,6 @@ import {
   Search,
   ScanBarcode,
   Download,
-  ArrowUpRight,
   AlertTriangle,
   X,
   Camera,
@@ -354,9 +353,7 @@ export default function VendorPanel({ onLogout }) {
                     <p>
                       Stock supplied, customer sales and payments to you are tracked separately.
                     </p>
-                    <button onClick={() => setView('statement')}>
-                      View supplier statement <ArrowUpRight size={17} />
-                    </button>
+                    <button onClick={() => setView('statement')}>View supplier statement</button>
                   </div>
                   <img src="/vendor-grocery.jpg" alt="Grocery shelves" />
                 </section>

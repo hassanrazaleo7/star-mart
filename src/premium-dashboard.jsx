@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ArrowUpRight,
-  ArrowRight,
   ScanBarcode,
   Boxes,
   ShoppingBag,
@@ -96,7 +94,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                 <ScanBarcode size={17} /> Open counter
               </Button>
               <Button variant="outline" onClick={() => go('orders')}>
-                Manage orders <ArrowUpRight size={16} />
+                Manage orders
               </Button>
             </div>
           </div>
@@ -144,9 +142,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                         size="icon"
                         aria-label={'View ' + m.label}
                         onClick={() => go(m.go)}
-                      >
-                        <ArrowUpRight size={17} />
-                      </Button>
+                      ></Button>
                     </TooltipTrigger>
                     <TooltipContent>Open {m.go}</TooltipContent>
                   </Tooltip>
@@ -226,7 +222,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <i /> Completed receipts
                 </span>
                 <Button variant="ghost" onClick={() => go('sales')}>
-                  Explore sales <ArrowRight size={14} />
+                  Explore sales
                 </Button>
               </div>
             </CardContent>
@@ -249,9 +245,8 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   </small>
                 </span>
                 <strong>{pending.length}</strong>
-                <ChevronRight size={15} />
               </button>
-              <button className="pdash-task" onClick={() => go('products')}>
+              <button className="pdash-task" onClick={() => go('stock')}>
                 <span className="pdash-task-icon green">
                   <AlertTriangle size={20} />
                 </span>
@@ -260,7 +255,6 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <small>Check quantities before they run out</small>
                 </span>
                 <strong>{low.length}</strong>
-                <ChevronRight size={15} />
               </button>
               <button className="pdash-task" onClick={() => go('vendors')}>
                 <span className="pdash-task-icon sand">
@@ -270,7 +264,6 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <b>Supplier network</b>
                   <small>{data.vendors.length} grocery partners</small>
                 </span>
-                <ChevronRight size={15} />
               </button>
               <div className="pdash-note">
                 <Activity size={20} />
@@ -278,7 +271,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <b>Every action leaves a trail.</b>
                   <small>Follow product, stock and order changes in your activity log.</small>
                   <Button variant="link" onClick={() => go('activity')}>
-                    View activity <ArrowUpRight size={13} />
+                    View activity
                   </Button>
                 </div>
               </div>
@@ -294,7 +287,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <CardTitle>The latest at your counter</CardTitle>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => go('sales')}>
-                  View all <ArrowUpRight size={15} />
+                  View all
                 </Button>
               </div>
             </CardHeader>
@@ -371,9 +364,7 @@ export default function PremiumDashboard({ data, low, go, stock, orders = [], us
                   <small>Recorded expenses</small>
                   <b>{money(summary.expensesPaisa)}</b>
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => go('expenses')}>
-                  <ArrowUpRight size={17} />
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => go('expenses')}></Button>
               </div>
             </CardContent>
           </Card>

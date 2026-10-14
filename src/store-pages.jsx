@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, ShieldCheck, Phone, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { ShieldCheck, Phone, MapPin, Clock, MessageCircle } from 'lucide-react';
 import { whatsappNumber } from './whatsapp-order.mjs';
 import { loadStoreSettings } from './lib/settings.js';
 import './store-pages.css';
@@ -72,7 +72,7 @@ export default function StorePage({ kind }) {
               ))}
             </div>
             <a className="sm-red-link" href="/shop#products">
-              Explore the store <ArrowUpRight size={18} />
+              Explore the store
             </a>
           </section>
         ) : (
@@ -104,7 +104,7 @@ export default function StorePage({ kind }) {
                 <a href={'https://wa.me/' + number} target="_blank" rel="noopener noreferrer">
                   <MessageCircle />
                   <strong>WhatsApp</strong>
-                  <span>Chat with the store →</span>
+                  <span>Chat with the store —</span>
                 </a>
               )}
             </div>
@@ -120,7 +120,7 @@ export default function StorePage({ kind }) {
                 Start with the vendor application. After approval, you can access your vendor panel.
               </p>
               <a className="sm-red-link" href="/become-a-vendor">
-                Become a vendor <ArrowUpRight size={18} />
+                Become a vendor
               </a>
             </div>
           </section>

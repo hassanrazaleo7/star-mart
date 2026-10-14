@@ -7,7 +7,6 @@ import {
   Banknote,
   Wallet,
   CheckCircle2,
-  ArrowLeft,
   Trash2,
   X,
   ShieldCheck,
@@ -451,7 +450,7 @@ export default function StoreCheckout({
                       setStep(x => x - 1);
                     }}
                   >
-                    <ArrowLeft size={16} /> Back
+                    Back
                   </button>
                 )}
               </>

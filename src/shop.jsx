@@ -28,8 +28,6 @@ import {
   Users,
   ShoppingBag,
   UserRound,
-  ArrowUpRight,
-  ArrowRight,
   Tag,
   Menu,
   X,
@@ -293,7 +291,7 @@ export default function Shop() {
       <div className="announcement">
         <div className="container">
           Welcome to Star Mart <span>✦</span> House of Groceries{' '}
-          <a href="#products">Browse available items ↗</a>
+          <a href="#products">Browse available items</a>
         </div>
       </div>
       <header className="store-header">
@@ -324,7 +322,7 @@ export default function Shop() {
             <a href="/become-a-vendor">Become a vendor</a>
           </nav>
           <a className="header-cta" href="#products">
-            Shop now ↗
+            Shop now
           </a>
           {user ? (
             <StoreAccountMenu
@@ -373,10 +371,10 @@ export default function Shop() {
               </p>
               <div className="hero-actions">
                 <a className="shop-button" href="#products">
-                  Shop the collection <ArrowUpRight size={18} aria-hidden="true" />
+                  Shop the collection
                 </a>
                 <a className="hero-secondary" href="#categories">
-                  Browse categories <ArrowRight size={16} aria-hidden="true" />
+                  Browse categories
                 </a>
               </div>
               <ul className="hero-proof" aria-label="Why shop with Star Mart">
@@ -413,7 +411,7 @@ export default function Shop() {
               <br />
               for every day.
             </h2>
-            <strong>Explore produce ↗</strong>
+            <strong>Explore produce</strong>
           </a>
           <a className="feature-card feature-pantry" href="#products">
             <span>YOUR ESSENTIALS</span>
@@ -422,7 +420,7 @@ export default function Shop() {
               <br />
               the everyday.
             </h2>
-            <strong>Browse the shelves ↗</strong>
+            <strong>Browse the shelves</strong>
           </a>
           <div className="feature-card feature-simple">
             <span>SHOP WITH EASE</span>
@@ -432,7 +430,7 @@ export default function Shop() {
               stock right now.
             </h2>
             <p>Our catalog shows current prices and availability.</p>
-            <a href="#products">Start shopping ↗</a>
+            <a href="#products">Start shopping</a>
           </div>
         </section>
         <section className="section container products-section" id="products">
@@ -591,7 +589,7 @@ export default function Shop() {
                 add items to your basket and place a pickup or delivery request.
               </p>
               <a className="shop-button" href="#products">
-                Explore the store ↗
+                Explore the store
               </a>
             </div>
           </div>

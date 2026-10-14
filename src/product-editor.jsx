@@ -13,6 +13,7 @@ export default function ProductEditor({
   vendors = [],
   vendor = false,
   reviewerRequired = false,
+  inventorySeparated = false,
   busy = false,
   storeStock = 0,
 }) {
@@ -137,6 +138,7 @@ export default function ProductEditor({
           {field('price', 'Selling price (Rs)', { number: true, required: true })}
           {!vendor &&
             !reviewerRequired &&
+            !inventorySeparated &&
             !form.id &&
             field('opening', 'Stock in store', { number: true, whole: true, required: true })}
           {vendor &&
@@ -166,8 +168,8 @@ export default function ProductEditor({
       </fieldset>
       {!vendor && form.id && (
         <p className="pe-stock-note">
-          <PackageCheck size={18} /> {storeStock} units in store. Use “Set stock” or “Receive stock”
-          in the product list to change inventory.
+          <PackageCheck size={18} /> {storeStock} units in store. Open the Stock section to receive
+          goods or update the physical stock count.
         </p>
       )}
       {(vendor || reviewerRequired) && (

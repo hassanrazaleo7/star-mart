@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import React, { useEffect, useState } from 'react';
-import { KeyRound, ShieldCheck, ArrowLeft, Copy } from 'lucide-react';
+import { KeyRound, ShieldCheck, Copy } from 'lucide-react';
 import './account-security.css';
 import { get, post, seg } from './lib/api.js';
 import { formatDateTime } from './lib/money.js';
@@ -137,7 +137,7 @@ export function PasswordHelp() {
             <p role="status" className="security-success">
               {message}
             </p>
-            <a href={doneKind === 'customer' ? '/login' : '/' + doneKind}>Back to sign in →</a>
+            <a href={doneKind === 'customer' ? '/login' : '/' + doneKind}>Back to sign in —</a>
           </>
         ) : (
           <form onSubmit={save} className="security-fields">
@@ -199,7 +199,6 @@ export function PasswordHelp() {
           </form>
         )}
         <a className="security-back" href="/shop">
-          <ArrowLeft size={16} />
           Back to Star Mart
         </a>
       </section>

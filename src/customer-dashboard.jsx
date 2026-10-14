@@ -1,14 +1,6 @@
 import { PasswordChange } from './account-security.jsx';
 import React, { useEffect, useState } from 'react';
-import {
-  ShoppingBag,
-  Wallet,
-  Gift,
-  CalendarDays,
-  ArrowRight,
-  ReceiptText,
-  LogOut,
-} from 'lucide-react';
+import { ShoppingBag, Wallet, Gift, CalendarDays, ReceiptText, LogOut } from 'lucide-react';
 import './customer-dashboard.css';
 import { useLiveRefresh } from './live.js';
 
@@ -76,9 +68,7 @@ export default function CustomerDashboard() {
         <main className="customer-wrap customer-empty">
           <h1>Welcome to Star Mart</h1>
           <p>Sign in to view your purchases, credit balance and rewards.</p>
-          <a href="/signup">
-            Create account or sign in <ArrowRight size={18} />
-          </a>
+          <a href="/signup">Create account or sign in</a>
           <small>{error === 'Please sign in' ? '' : error}</small>
         </main>
       ) : (
@@ -89,9 +79,7 @@ export default function CustomerDashboard() {
               <h1>Hello, {firstName} 👋</h1>
               <p>Your shopping, bills and rewards in one place.</p>
             </div>
-            <a href="/shop#products">
-              Continue shopping <ArrowRight size={18} />
-            </a>
+            <a href="/shop#products">Continue shopping</a>
           </section>
           {error && (
             <p className="muted" role="status">
@@ -339,7 +327,7 @@ export default function CustomerDashboard() {
       )}
       <footer>
         <div className="customer-wrap">
-          Star Mart · House of Groceries <a href="/shop">Back to store →</a>
+          Star Mart · House of Groceries <a href="/shop">Back to store —</a>
         </div>
       </footer>
     </div>

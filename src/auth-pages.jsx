@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  UserRound,
-  ShoppingBag,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Store,
-  Mail,
-  LockKeyhole,
-} from 'lucide-react';
+import { UserRound, ShoppingBag, Eye, EyeOff, Store, Mail, LockKeyhole } from 'lucide-react';
 import { configured, loadFirebase } from './firebase-config.js';
 import { api } from './lib/api.js';
 import './auth-pages.css';
@@ -186,7 +177,6 @@ export function CustomerAuth({ initialMode = 'signup' }) {
             )}
             <button className="sm-primary" disabled={busy}>
               {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'}
-              <ArrowRight size={17} />
             </button>
           </form>
           {mode === 'login' && (
@@ -276,7 +266,7 @@ export function VendorApply() {
                 password you chose.
               </p>
               <a className="sm-primary" href="/shop">
-                Back to store <ArrowRight size={17} />
+                Back to store
               </a>
             </>
           ) : (
@@ -342,7 +332,6 @@ export function VendorApply() {
                 )}
                 <button className="sm-primary" disabled={busy}>
                   {busy ? 'Sending…' : 'Apply as a vendor'}
-                  <ArrowRight size={17} />
                 </button>
               </form>
               <p className="sm-switch">

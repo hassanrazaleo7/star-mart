@@ -161,7 +161,7 @@ export default function ProductDetail({ product, quantity, onAdd, onQuantity, on
           )}
           {quantity > 0 && (
             <button className="pd-view" onClick={onCart}>
-              View cart & checkout →
+              View cart & checkout —
             </button>
           )}
         </div>

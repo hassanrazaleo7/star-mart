@@ -1,3 +1,4 @@
+import StockPanel from './stock-panel.jsx';
 import LoadingState from './loading-state.jsx';
 import { ProductReview, ShiftDesk } from './owner-workspace.jsx';
 import { receiptHtml } from './lib/receipt.js';
@@ -117,7 +118,8 @@ const nav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['pos', 'POS & barcode', ScanBarcode],
   ['orders', 'Customer orders', PackageCheck],
-  ['products', 'Products & stock', Boxes],
+  ['products', 'Products', Boxes],
+  ['stock', 'Stock', Boxes],
   ['purchases', 'Purchases', Truck],
   ['sales', 'Sales & receipts', ShoppingBag],
   ['vendors', 'Vendors', Users],
@@ -266,7 +268,8 @@ const recordPaths = {
 const viewTitles = {
   dashboard: ['A clear view of your store.', 'Track every item, rupee and reorder point.'],
   pos: ['Point of sale.', 'Scan a barcode, prepare the bill and collect payment.'],
-  products: ['Product inventory.', 'Every product, price, barcode and shelf in one place.'],
+  products: ['Products.', 'Manage product details, prices and publishing approvals.'],
+  stock: ['Stock control.', 'Receive goods, check availability and record physical stock counts.'],
   orders: [
     'Customer orders.',
     'Review pickup and delivery requests; confirm, release or fulfill stock.',
@@ -378,7 +381,10 @@ function RecordField({ field, form, setForm, modal, products, vendors, stock, pr
         >
           <option value="">{type === 'product' ? 'Select product' : 'No vendor selected'}</option>
           {(type === 'product'
-            ? products.filter(p => !p.deleted_at && p.catalog_status !== 'archived')
+            ? products.filter(
+                p =>
+                  !p.deleted_at && p.review_status === 'Approved' && p.catalog_status !== 'archived'
+              )
             : vendors
           ).map(x => (
             <option value={x.id} key={x.id}>
@@ -1176,7 +1182,7 @@ function App({ portal }) {
               </button>
             ) : (
               <button className="sm-primary" disabled={busy}>
-                {busy ? 'Please wait…' : mode === 'setup' ? 'Create owner account' : 'Sign in'} →
+                {busy ? 'Please wait…' : mode === 'setup' ? 'Create owner account' : 'Sign in'} —
               </button>
             )}
             {mode === 'login' && portal === 'admin' && firebaseConfigured && (
@@ -1298,7 +1304,7 @@ function App({ portal }) {
             </a>
             {role === 'admin' && view === 'reports' && (
               <IconButton icon={Download} className="quiet" disabled={busy} onClick={exportBackup}>
-                Export
+                Backup JSON
               </IconButton>
             )}
           </div>
@@ -1761,6 +1767,15 @@ function App({ portal }) {
               <button onClick={() => open('product')}>Add another product</button>
             </div>
           )}
+          {view === 'stock' && role === 'admin' && (
+            <StockPanel
+              products={data.products}
+              vendors={data.vendors}
+              stock={stock}
+              onReceive={receiveStock}
+              onRefresh={sync}
+            />
+          )}
           {view === 'products' && role === 'admin' && (
             <section className="sm-inventory-workspace">
               <div className="sm-workspace-tabs" role="group" aria-label="Product workspace">
@@ -1768,7 +1783,7 @@ function App({ portal }) {
                   className={catalogTab === 'inventory' ? 'active' : ''}
                   onClick={() => setCatalogTab('inventory')}
                 >
-                  Products & stock
+                  Products
                 </button>
                 <button
                   className={catalogTab === 'review' ? 'active' : ''}
@@ -1787,7 +1802,7 @@ function App({ portal }) {
                   onImage={uploadPicture}
                   onRefresh={sync}
                   stock={stock}
-                  onReceive={receiveStock}
+                  catalogOnly
                 />
               )}
             </section>
@@ -1991,7 +2006,7 @@ function App({ portal }) {
                     onImage={uploadPicture}
                     onRefresh={sync}
                     stock={stock}
-                    onReceive={receiveStock}
+                    catalogOnly
                   />
                 )}
               />
@@ -2059,6 +2074,7 @@ function App({ portal }) {
           {view === 'reports' && role === 'admin' && (
             <Reports
               products={data.products}
+              vendors={data.vendors}
               purchases={data.purchases}
               low={low}
               stock={stock}
@@ -2114,6 +2130,7 @@ function App({ portal }) {
                     </div>
                   )}
                   <ProductEditor
+                    inventorySeparated
                     reviewerRequired={role === 'staff'}
                     form={form}
                     setForm={setForm}
