@@ -19,13 +19,26 @@ import {
   Archive,
   Trash2,
   Search,
-  MoreHorizontal,
+  SlidersHorizontal,
+  Package,
+  Pencil,
   ChevronDown,
   X,
   CheckCircle2,
 } from 'lucide-react';
 import { post, seg } from './lib/api.js';
 import { formatPaisa as money, formatQty } from './lib/money.js';
+function CatalogPhoto({ source }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [source]);
+  return source && !failed ? (
+    <img src={source} alt="" onError={() => setFailed(true)} />
+  ) : (
+    <span className="ac-photo-fallback" aria-label="No product photo">
+      <Package size={21} />
+    </span>
+  );
+}
 const actions = [
   ['hide', 'Hide from website', EyeOff],
   ['show', 'Show / restore', Eye],
@@ -393,7 +406,7 @@ export default function AdminCatalog({
                     </td>
                     <td>
                       <div className="vp-product ac-product">
-                        {p.image ? <img src={p.image} alt="" /> : <span>▣</span>}
+                        <CatalogPhoto source={p.image} />
                         <div>
                           <b>{p.name}</b>
                           <small>
@@ -476,7 +489,7 @@ export default function AdminCatalog({
                           disabled={busy || Boolean(p.deleted_at)}
                           onClick={() => onEdit(p)}
                         >
-                          Edit
+                          <Pencil size={13} /> Edit
                         </button>
                         {!p.deleted_at && (
                           <button
@@ -495,12 +508,12 @@ export default function AdminCatalog({
                             <button
                               className="ac-more"
                               disabled={busy}
-                              aria-label={'More options for ' + p.name}
+                              aria-label={'Manage ' + p.name}
                               aria-expanded={menu === p.id}
                               aria-haspopup="menu"
                               onClick={() => setMenu(menu === p.id ? null : p.id)}
                             >
-                              <MoreHorizontal size={20} />
+                              <SlidersHorizontal size={14} /> <span>Manage</span>
                             </button>
                           </DropdownMenuTrigger>
                           {options([p.id], p)}
