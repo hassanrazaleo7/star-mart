@@ -18,7 +18,11 @@ const host = process.env.HOST || '127.0.0.1',
   port = Number(process.env.API_PORT || 8787);
 const api = createServer(handle);
 api.listen(port, host, () => console.log(`API http://${host}:${port}`));
-const vite = await viteServer({ configFile: 'vite.config.js', server: { host: '127.0.0.1' } });
+const lan = process.argv.includes('--host');
+const vite = await viteServer({
+  configFile: 'vite.config.js',
+  server: { host: lan ? '0.0.0.0' : '127.0.0.1' },
+});
 await vite.listen();
 vite.printUrls();
 

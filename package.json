@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node api.js && node dev.mjs",
-    "build": "node api.js && vite build",
-    "start": "node api.js && node dev.mjs",
+    "dev": "node dev.mjs",
+    "build": "vite build",
+    "start": "node dev.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
