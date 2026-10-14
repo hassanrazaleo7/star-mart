@@ -440,7 +440,12 @@ export default function AdminCatalog({
                         {
                           {
                             active: 'On website',
-                            hidden: 'Hidden',
+                            hidden:
+                              p.review_status === 'Pending'
+                                ? 'Pending review'
+                                : p.review_status === 'Returned'
+                                  ? 'Needs correction'
+                                  : 'Hidden',
                             archived: 'Archived',
                             deleted: 'Deleted',
                           }[state]
@@ -463,7 +468,11 @@ export default function AdminCatalog({
                             Set stock
                           </button>
                         )}
-                        <button className="ac-edit" disabled={busy} onClick={() => onEdit(p)}>
+                        <button
+                          className="ac-edit"
+                          disabled={busy || Boolean(p.deleted_at)}
+                          onClick={() => onEdit(p)}
+                        >
                           Edit
                         </button>
                         {!p.deleted_at && (

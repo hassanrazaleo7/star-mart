@@ -1,3 +1,5 @@
+import { ProductReview } from './owner-workspace.jsx';
+import './owner-workspace.css';
 import { BarcodeCamera } from './barcode-scanner.jsx';
 import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
 import { PasswordChange } from './account-security.jsx';
@@ -214,13 +216,13 @@ export default function VendorPanel({ onLogout }) {
         ? await put('/products/' + seg(form.id), payload)
         : await post('/products', payload);
       if (photo) await uploadImage(saved.id, photo);
-      setSavedProduct(saved.name + ' saved successfully.');
+      setSavedProduct(saved.name + ' submitted for approval.');
       setForm(another ? { ...empty, category: form.category } : null);
       setPhoto(null);
       stopCamera();
       await load();
       setNotice(
-        'Product saved to your catalog. Owner records actual received stock before customer orders.'
+        'Submitted for owner review. It becomes live after details and received stock are approved.'
       );
     } catch (e) {
       if (saved) {
@@ -334,6 +336,7 @@ export default function VendorPanel({ onLogout }) {
           </p>
         )}
         <PasswordChange kind="vendor" />
+        {view === 'products' && <ProductReview onRefresh={load} onEdit={edit} />}
         {!data ? (
           <p>Loading supplier account…</p>
         ) : (
@@ -516,7 +519,11 @@ export default function VendorPanel({ onLogout }) {
                       <td>{p.barcode || 'Not added'}</td>
                       <td>
                         {p.category}
-                        <small>{p.catalog_status || 'active'}</small>
+                        <small>
+                          {p.review_status !== 'Approved'
+                            ? p.review_status + ' review'
+                            : p.catalog_status || 'active'}
+                        </small>
                       </td>
                       <td>
                         <b className={low.includes(p) ? 'vp-alert' : ''}>

@@ -1,3 +1,6 @@
+import { ProductReview, ShiftDesk } from './owner-workspace.jsx';
+import { receiptHtml } from './lib/receipt.js';
+import { loadStoreSettings } from './lib/settings.js';
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster, toast as notify } from 'sonner';
@@ -44,7 +47,6 @@ import {
 } from './admin-workflow.jsx';
 import PickupDesk from './pickup-desk.jsx';
 import StoreSettings from './store-settings.jsx';
-import { PasswordChange } from './account-security.jsx';
 import PremiumDashboard from './premium-dashboard.jsx';
 import AdminCommand from './admin-command.jsx';
 import AdminDate from './admin-date.jsx';
@@ -71,6 +73,7 @@ import './auth-pages.css';
 import './admin-premium.css';
 import './brand.css';
 import './admin-workflow.css';
+import './owner-workspace.css';
 
 // Portals outside the admin shell load on demand so the POS never downloads the storefront, and vice versa.
 const Shop = lazy(() => import('./shop.jsx'));
@@ -694,7 +697,11 @@ function App({ portal }) {
   const inStock = useMemo(
     () =>
       data.products.filter(
-        p => !p.deleted_at && sellable(p) > 0 && p.catalog_status !== 'archived'
+        p =>
+          p.review_status === 'Approved' &&
+          !p.deleted_at &&
+          sellable(p) > 0 &&
+          p.catalog_status !== 'archived'
       ),
     [data.products]
   );
@@ -780,8 +787,15 @@ function App({ portal }) {
             'image/jpeg'
           );
         setProductPhoto(null);
-        setProductSuccess(saved.name + ' saved successfully.');
-        flash('Product and photo saved.');
+        setProductSuccess(
+          saved.name +
+            (role === 'admin' ? ' saved successfully.' : ' submitted for owner approval.')
+        );
+        flash(
+          role === 'admin'
+            ? 'Product and photo saved.'
+            : 'Submitted for owner approval. Not live yet.'
+        );
         if (another) {
           setForm({
             ...model.product,
@@ -947,16 +961,31 @@ function App({ portal }) {
       flash('Allow popups to print receipt.');
       return;
     }
-    const esc = s =>
-      String(s ?? '').replace(
-        /[&<>"']/g,
-        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-      );
     popup.document.write(
-      `<!doctype html><html><head><title>Star Mart ${esc(r.receipt)}</title><style>body{font:14px Arial;width:320px;margin:25px auto;color:#222}h1{text-align:center;color:#fc2600;margin-bottom:0}.sub{text-align:center;letter-spacing:2px;font-size:11px}table{width:100%;border-collapse:collapse;margin:20px 0}td{padding:9px 0;border-bottom:1px dashed #ccc}.row{display:flex;justify-content:space-between;padding:5px 0}.total{font-weight:bold;font-size:18px;border-top:2px solid;margin-top:12px;padding-top:12px}</style></head><body><h1>★ Star Mart</h1><div class="sub">HOUSE OF GROCERIES</div><p>${esc(r.receipt)}<br>${esc(date(r.createdAt))}<br>${esc(r.customer)} · ${esc(r.payment)}</p><table>${r.lines.map(x => `<tr><td>${esc(x.name)}<br>${Q(x.qty)} × ${M(x.unitPrice)}</td><td align="right">${M(x.total)}</td></tr>`).join('')}</table><div class="row"><span>Subtotal</span><b>${M(r.subtotal)}</b></div><div class="row"><span>Discount</span><b>− ${M(r.discount)}</b></div><div class="row"><span>Tax</span><b>${M(r.tax)}</b></div><div class="row total"><span>Total</span><b>${M(r.total)}</b></div><div class="row"><span>Received</span><b>${M(r.received)}</b></div><div class="row"><span>Change</span><b>${M(Math.max(0, Number(r.received) - Number(r.total)))}</b></div><p style="text-align:center;margin-top:25px">Thank you for shopping!</p></body></html>`
+      receiptHtml(r, { logo: new URL('/logo.png', location.origin).href, cashier: user })
     );
     popup.document.close();
-    setTimeout(() => popup.print(), 250);
+    loadStoreSettings()
+      .then(settings => {
+        if (popup.closed) return;
+        popup.document.open();
+        popup.document.write(
+          receiptHtml(r, {
+            logo: new URL('/logo.png', location.origin).href,
+            cashier: user,
+            address: settings.address || '',
+            phone: settings.phone || '',
+          })
+        );
+        popup.document.close();
+        const image = popup.document.querySelector('img');
+        if (image?.complete) popup.print();
+        else {
+          image.onload = () => popup.print();
+          image.onerror = () => popup.print();
+        }
+      })
+      .catch(() => popup.print());
   }
   async function uploadLegacy(e) {
     const file = e.target.files?.[0];
@@ -1295,13 +1324,21 @@ function App({ portal }) {
                 Open POS
               </IconButton>
             ) : addTypes[view] &&
-              (role === 'admin' || (role === 'staff' && view === 'adjustments')) ? (
+              (role === 'admin' || (role === 'staff' && view === 'products')) ? (
               <IconButton icon={Plus} className="primary" onClick={() => open(addTypes[view])}>
                 Add {addTypes[view]}
               </IconButton>
             ) : null}
           </div>
-          {role === 'staff' && <PasswordChange kind="staff" />}
+          {role === 'staff' && view === 'pos' && <ShiftDesk />}
+          {role === 'admin' && view === 'accounts' && <ShiftDesk owner />}
+          {view === 'products' && (
+            <ProductReview
+              owner={role === 'admin'}
+              onRefresh={sync}
+              onEdit={p => open('product', p)}
+            />
+          )}
           {error && !modal && (
             <div className="error banner">
               <AlertTriangle size={17} />
@@ -2051,6 +2088,7 @@ function App({ portal }) {
                     </div>
                   )}
                   <ProductEditor
+                    reviewerRequired={role === 'staff'}
                     form={form}
                     setForm={setForm}
                     photo={productPhoto}
@@ -2146,7 +2184,12 @@ function App({ portal }) {
                   {busy
                     ? 'Saving…'
                     : {
-                        product: form.id ? 'Save product' : 'Add product',
+                        product:
+                          role === 'staff'
+                            ? 'Submit for review'
+                            : form.id
+                              ? 'Save product'
+                              : 'Add product',
                         vendor: 'Save vendor',
                         purchase: 'Receive stock',
                         adjustment: 'Save stock adjustment',

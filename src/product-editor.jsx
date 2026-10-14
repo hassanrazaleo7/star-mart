@@ -12,6 +12,7 @@ export default function ProductEditor({
   setPhoto,
   vendors = [],
   vendor = false,
+  reviewerRequired = false,
   busy = false,
   storeStock = 0,
 }) {
@@ -27,7 +28,7 @@ export default function ProductEditor({
     return () => URL.revokeObjectURL(url);
   }, [photo]);
   const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
-  const protectedProduct = vendor && Number(form.stock_milli) > 0;
+  const protectedProduct = false;
   const categoryOptions =
     form.category && !GROCERY_CATEGORIES.includes(form.category)
       ? [...GROCERY_CATEGORIES, form.category]
@@ -135,6 +136,7 @@ export default function ProductEditor({
           })}
           {field('price', 'Selling price (Rs)', { number: true, required: true })}
           {!vendor &&
+            !reviewerRequired &&
             !form.id &&
             field('opening', 'Stock in store', { number: true, whole: true, required: true })}
           {vendor &&
@@ -168,10 +170,10 @@ export default function ProductEditor({
           in the product list to change inventory.
         </p>
       )}
-      {vendor && (
+      {(vendor || reviewerRequired) && (
         <p className="pe-stock-note">
-          <PackageCheck size={18} /> Supplier stock is separate from Star Mart stock. The owner
-          records goods received before they can be sold.
+          <PackageCheck size={18} /> Submitted details stay pending until the owner approves them.
+          Only verified received stock can be sold.
         </p>
       )}
       <details className="pe-more">
