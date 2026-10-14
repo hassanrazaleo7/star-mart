@@ -1,3 +1,4 @@
+import LoadingState from './loading-state.jsx';
 import { ProductReview, ShiftDesk } from './owner-workspace.jsx';
 import { receiptHtml } from './lib/receipt.js';
 import { loadStoreSettings } from './lib/settings.js';
@@ -48,7 +49,6 @@ import {
 import PickupDesk from './pickup-desk.jsx';
 import StoreSettings from './store-settings.jsx';
 import PremiumDashboard from './premium-dashboard.jsx';
-import AdminCommand from './admin-command.jsx';
 import AdminDate from './admin-date.jsx';
 import DailySales from './daily-sales.jsx';
 import AdminCatalog from './admin-catalog.jsx';
@@ -74,6 +74,7 @@ import './admin-premium.css';
 import './brand.css';
 import './admin-workflow.css';
 import './owner-workspace.css';
+import './admin-simple.css';
 
 // Portals outside the admin shell load on demand so the POS never downloads the storefront, and vice versa.
 const Shop = lazy(() => import('./shop.jsx'));
@@ -422,6 +423,7 @@ function App({ portal }) {
   const productSaveLock = useRef(false);
   const [productPhoto, setProductPhoto] = useState(null);
   const [productSuccess, setProductSuccess] = useState('');
+  const [catalogTab, setCatalogTab] = useState('inventory');
   const [mode, setMode] = useState('loading'),
     [password, setPassword] = useState(''),
     [owner, setOwner] = useState(''),
@@ -1048,11 +1050,11 @@ function App({ portal }) {
 
   if (mode === 'ready' && portal === 'vendor')
     return (
-      <Suspense fallback={<div className="boot">Loading vendor workspace…</div>}>
+      <Suspense fallback={<LoadingState label="Opening vendor workspace…" />}>
         <VendorPanel onLogout={logout} />
       </Suspense>
     );
-  if (mode === 'loading') return <div className="boot">Loading Star Mart…</div>;
+  if (mode === 'loading') return <LoadingState />;
   if (mode !== 'ready')
     return (
       <div className={'sm-auth sm-portal sm-' + portal}>
@@ -1259,7 +1261,6 @@ function App({ portal }) {
             </div>
           </div>
           <div className="top-right">
-            <AdminCommand nav={visibleNav} onNavigate={go} />
             <AdminDate />
             <IconButton
               icon={RefreshCw}
@@ -1279,7 +1280,7 @@ function App({ portal }) {
                 Link sign-in
               </button>
             )}
-            {role === 'admin' && (
+            {role === 'admin' && view === 'settings' && (
               <label className="quiet upload-label">
                 <Upload size={17} />
                 Import old backup
@@ -1295,7 +1296,7 @@ function App({ portal }) {
               <ShoppingBag size={17} />
               View shop
             </a>
-            {role === 'admin' && (
+            {role === 'admin' && view === 'reports' && (
               <IconButton icon={Download} className="quiet" disabled={busy} onClick={exportBackup}>
                 Export
               </IconButton>
@@ -1332,12 +1333,17 @@ function App({ portal }) {
           </div>
           {role === 'staff' && view === 'pos' && <ShiftDesk />}
           {role === 'admin' && view === 'accounts' && <ShiftDesk owner />}
-          {view === 'products' && (
+          {view === 'products' && role === 'staff' && (
             <ProductReview
               owner={role === 'admin'}
               onRefresh={sync}
               onEdit={p => open('product', p)}
             />
+          )}
+          {busy && !modal && (
+            <div className="sm-progress-notice" role="status">
+              <span className="sm-small-spinner" aria-hidden="true" /> Please wait…
+            </div>
           )}
           {error && !modal && (
             <div className="error banner">
@@ -1756,15 +1762,35 @@ function App({ portal }) {
             </div>
           )}
           {view === 'products' && role === 'admin' && (
-            <AdminCatalog
-              products={data.products}
-              vendors={data.vendors}
-              onEdit={p => open('product', p)}
-              onImage={uploadPicture}
-              onRefresh={sync}
-              stock={stock}
-              onReceive={receiveStock}
-            />
+            <section className="sm-inventory-workspace">
+              <div className="sm-workspace-tabs" role="group" aria-label="Product workspace">
+                <button
+                  className={catalogTab === 'inventory' ? 'active' : ''}
+                  onClick={() => setCatalogTab('inventory')}
+                >
+                  Products & stock
+                </button>
+                <button
+                  className={catalogTab === 'review' ? 'active' : ''}
+                  onClick={() => setCatalogTab('review')}
+                >
+                  Product approvals
+                </button>
+              </div>
+              {catalogTab === 'review' ? (
+                <ProductReview owner onRefresh={sync} />
+              ) : (
+                <AdminCatalog
+                  products={data.products}
+                  vendors={data.vendors}
+                  onEdit={p => open('product', p)}
+                  onImage={uploadPicture}
+                  onRefresh={sync}
+                  stock={stock}
+                  onReceive={receiveStock}
+                />
+              )}
+            </section>
           )}
           {view === 'products' && role !== 'admin' && (
             <RecordTable
@@ -1921,7 +1947,7 @@ function App({ portal }) {
             </SectionSwitcher>
           )}
           {view === 'bulk' && role === 'admin' && (
-            <Suspense fallback={<p>Loading importer…</p>}>
+            <Suspense fallback={<LoadingState compact label="Opening import tools…" />}>
               <BulkImport onImported={sync} />
             </Suspense>
           )}
@@ -1946,7 +1972,7 @@ function App({ portal }) {
             />
           )}
           {view === 'vendors' && role === 'admin' && (
-            <Suspense fallback={<p>Loading vendor workspace…</p>}>
+            <Suspense fallback={<LoadingState compact label="Opening vendor workspace…" />}>
               <VendorManagement
                 vendors={data.vendors}
                 products={data.products}
@@ -2351,5 +2377,5 @@ const page = ['/about', '/contact', '/contact-us'].includes(path) ? (
   <NotFound />
 );
 createRoot(document.getElementById('root')).render(
-  <Suspense fallback={<div className="boot">Loading Star Mart…</div>}>{page}</Suspense>
+  <Suspense fallback={<LoadingState />}>{page}</Suspense>
 );

@@ -244,7 +244,7 @@ export default function AdminCatalog({
       <div className="vp-head">
         <div>
           <h2>Product catalog</h2>
-          <p>Edit a product or open its ••• menu for more options.</p>
+          <p>Search, update stock or manage your products below.</p>
         </div>
         <span className="ac-count">{shown.length} products</span>
       </div>
@@ -276,7 +276,7 @@ export default function AdminCatalog({
           <option value="active">On website</option>
           <option value="hidden">Hidden</option>
           <option value="archived">Archived</option>
-          <option value="deleted">Deleted / restore</option>
+          <option value="deleted">Deleted products</option>
         </select>
       </div>
       <div className="ac-selection">
@@ -549,7 +549,7 @@ export default function AdminCatalog({
             <strong className="ac-target">{dialog.name}</strong>
             <AlertDialogDescription id="ac-description">
               {dialog.type === 'delete'
-                ? 'Remove these products from the active catalog and website. Financial records and existing stock history stay intact. Restore them from Deleted / restore. Pending orders must be completed or cancelled first.'
+                ? 'Remove these products from the active catalog and website. Financial records and existing stock history stay intact. Restore them from Deleted products. Pending orders must be completed or cancelled first.'
                 : 'These products will leave the website and stop appearing for new POS sales. Their stock and complete account history stay saved. You can restore them from this menu later.'}
             </AlertDialogDescription>
             {error && (
