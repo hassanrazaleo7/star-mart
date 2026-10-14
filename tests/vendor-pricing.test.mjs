@@ -1,75 +1,76 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { withTempDb, request, setupOwner, createVendor } from './helpers.mjs';
-
-test('vendors cannot reprice stocked products; the owner reviews proposed prices', async () => {
-  await withTempDb('star-pricing-', async () => {
-    const owner = await setupOwner();
-    const vendor = await createVendor(owner);
-    const created = await request(
-      '/products',
-      'POST',
-      { name: 'Honey', category: 'Grocery Staples', price: '500', cost: '300', barcode: '111' },
-      { cookie: vendor.cookie }
-    );
-    assert.equal(created.status, 201, JSON.stringify(created.body));
+test('supplier changes stay pending until owner approval, including unstocked product pricing', () =>
+  withTempDb('star-pricing-', async () => {
+    const owner = await setupOwner(),
+      vendor = await createVendor(owner);
+    const body = {
+      name: 'Honey',
+      category: 'Grocery Staples',
+      price: 500,
+      cost: 300,
+      barcode: '111',
+    };
+    const created = await request('/products', 'POST', body, { cookie: vendor.cookie });
+    assert.equal(created.status, 201);
     const pid = created.body.id;
-    // Not stocked yet: the vendor may still change the price.
-    let edited = await request(
+    const edit = await request(
       '/products/' + pid,
       'PUT',
-      { name: 'Honey', category: 'Grocery Staples', price: '550', cost: '300', barcode: '111' },
+      { ...body, price: 550 },
       { cookie: vendor.cookie }
     );
-    assert.equal(edited.status, 200, JSON.stringify(edited.body));
-    assert.equal(Number(edited.body.price_paisa), 55000);
-    await request(
-      '/purchases',
-      'POST',
-      { productId: pid, vendorId: vendor.vendorId, qty: 5, cost: '300', payment: 'Paid' },
-      { cookie: owner }
-    );
-    edited = await request(
-      '/products/' + pid,
-      'PUT',
-      {
-        name: 'Cheap honey',
-        category: 'Grocery Staples',
-        price: '1',
-        cost: '0',
-        barcode: '222',
-        unit: 'kg',
-        brand: 'Bee',
-      },
-      { cookie: vendor.cookie }
-    );
-    assert.equal(edited.status, 200, JSON.stringify(edited.body));
-    assert.equal(Number(edited.body.price_paisa), 55000);
-    assert.equal(Number(edited.body.cost_paisa), 30000);
-    assert.equal(edited.body.name, 'Honey');
-    assert.equal(edited.body.barcode, '111');
-    assert.equal(edited.body.unit, 'piece');
-    assert.equal(edited.body.brand, 'Bee');
-    assert.equal(Number(edited.body.vendor_proposed_price_paisa), 100);
+    assert.equal(edit.status, 200);
+    assert.equal(Number(edit.body.price_paisa), 50000);
+    const pending = (await request('/product-submissions', 'GET', undefined, { cookie: owner }))
+      .body.submissions[0];
+    assert.equal(Number(pending.payload.price), 550);
     assert.equal(
       (
         await request(
-          '/products/' + pid + '/price-review',
+          '/product-submissions/' + pending.id + '/review',
           'POST',
-          { accept: true },
+          { action: 'approve', verified: true, receivedQty: 5, paid: 1500 },
           { cookie: vendor.cookie }
         )
       ).status,
       403
     );
-    const reviewed = await request(
-      '/products/' + pid + '/price-review',
-      'POST',
-      { accept: true },
-      { cookie: owner }
+    assert.equal(
+      (
+        await request(
+          '/product-submissions/' + pending.id + '/review',
+          'POST',
+          { action: 'approve', verified: true, receivedQty: 5, paid: 1500 },
+          { cookie: owner }
+        )
+      ).status,
+      200
     );
-    assert.equal(reviewed.status, 200, JSON.stringify(reviewed.body));
-    assert.equal(Number(reviewed.body.price_paisa), 100);
-    assert.equal(reviewed.body.vendor_proposed_price_paisa, null);
-  });
-});
+    const changed = await request(
+      '/products/' + pid,
+      'PUT',
+      { ...body, name: 'Cheap honey', price: 1, cost: 0, barcode: '222', unit: 'kg', brand: 'Bee' },
+      { cookie: vendor.cookie }
+    );
+    assert.equal(changed.status, 200);
+    assert.equal(Number(changed.body.price_paisa), 55000);
+    assert.equal(changed.body.name, 'Honey');
+    assert.equal(changed.body.barcode, '111');
+    assert.equal(changed.body.brand, '');
+    const next = (
+      await request('/product-submissions', 'GET', undefined, { cookie: owner })
+    ).body.submissions.find(x => x.status === 'Pending');
+    assert.equal(
+      (
+        await request(
+          '/product-submissions/' + next.id + '/review',
+          'POST',
+          { action: 'return', note: 'Keep the correct barcode' },
+          { cookie: owner }
+        )
+      ).status,
+      200
+    );
+  }));

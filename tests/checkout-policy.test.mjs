@@ -6,6 +6,10 @@ test('staff discounts are capped, every discount needs a reason, tax comes from 
   await withTempDb('star-policy-', async () => {
     const owner = await setupOwner();
     const staff = await createStaff(owner);
+    assert.equal(
+      (await request('/shifts/open', 'POST', { opening: 0 }, { cookie: staff })).status,
+      201
+    );
     const product = await createProduct(owner, {
       opening: 20,
       price: '250',

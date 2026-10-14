@@ -90,6 +90,19 @@ test('vendor application, approval, own catalog, sales, supplier credit and staf
       ).status,
       403
     );
+    const submission = (await admin('/product-submissions')).body.submissions.find(
+      s => s.product_id === pid
+    );
+    assert.equal(
+      (
+        await admin('/product-submissions/' + submission.id + '/review', 'POST', {
+          action: 'approve',
+          verified: true,
+          receivedQty: 0,
+        })
+      ).status,
+      200
+    );
     let purchase = await admin('/purchases', 'POST', {
       productId: pid,
       vendorId: approved.body.vendorId,
@@ -153,7 +166,8 @@ test('vendor application, approval, own catalog, sales, supplier credit and staf
       await call('/account/login', 'POST', { email: 'staff@example.com', password: 'staffpass' })
     ).headers['set-cookie'].split(';')[0];
     assert.equal((await call('/vendor/applications', 'GET', null, staff)).status, 403);
-    assert.equal((await call('/products', 'POST', { name: 'No' }, staff)).status, 403);
+    assert.equal((await call('/products', 'POST', { name: 'No' }, staff)).status, 201);
+    await call('/shifts/open', 'POST', { opening: 0 }, staff);
     assert.equal(
       (
         await call(

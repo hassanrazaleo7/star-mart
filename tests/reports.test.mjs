@@ -7,6 +7,10 @@ test('range reports aggregate sales, margin, purchases and expenses in the datab
   await withTempDb('star-reports-', async () => {
     const owner = await setupOwner();
     const staff = await createStaff(owner);
+    assert.equal(
+      (await request('/shifts/open', 'POST', { opening: 0 }, { cookie: staff })).status,
+      201
+    );
     const product = await createProduct(owner, { opening: 0, price: '250', cost: '180' });
     await request(
       '/purchases',

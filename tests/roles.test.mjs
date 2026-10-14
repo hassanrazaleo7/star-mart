@@ -110,7 +110,7 @@ test('vendor sees only own inventory, staff can bill, image upload persists', as
     assert.equal(state.body.products[0].vendor_id, v1);
     assert.equal(
       (await call('/products/' + p1 + '/image', 'POST', picture, vendor, true)).status,
-      200
+      409
     );
     assert.equal((await call('/orders', 'GET', null, vendor)).status, 403);
     assert.equal(
@@ -121,7 +121,8 @@ test('vendor sees only own inventory, staff can bill, image upload persists', as
     let staff = (
       await call('/account/login', 'POST', { email: 's@example.com', password: 'secretpass' })
     ).headers['set-cookie'].split(';')[0];
-    assert.equal((await call('/products', 'POST', { name: 'Forbidden' }, staff)).status, 403);
+    assert.equal((await call('/products', 'POST', { name: 'New draft' }, staff)).status, 201);
+    await call('/shifts/open', 'POST', { opening: 0 }, staff);
     assert.equal(
       (
         await call(

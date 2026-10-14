@@ -28,6 +28,10 @@ test('materialized stock always equals the movement ledger and pending reservati
   await withTempDb('star-invariant-', async () => {
     const owner = await setupOwner();
     const staff = await createStaff(owner);
+    assert.equal(
+      (await request('/shifts/open', 'POST', { opening: 0 }, { cookie: staff })).status,
+      201
+    );
     const customer = await createCustomer();
     const a = await createProduct(owner, { name: 'A', opening: 10 });
     const b = await createProduct(owner, { name: 'B', opening: 3, sku: 'B-1' });
