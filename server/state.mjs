@@ -28,7 +28,7 @@ export async function state(user, { from } = {}) {
       products: products.map(
         ({ cost_paisa: _c, tax_rate_bps: _t, vendor_proposed_price_paisa: _p, ...x }) => x
       ),
-      vendors: [],
+      vendors: (await d.query('SELECT id,name FROM vendors ORDER BY name')).rows,
       purchases: [],
       sales: [],
       receipts: [],

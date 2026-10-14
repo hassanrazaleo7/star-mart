@@ -1,6 +1,6 @@
 import { tx } from './db.mjs';
 import { id } from './auth.mjs';
-import { milli } from './money.mjs';
+import { wholeQuantity as milli } from './money.mjs';
 import { fail } from './errors.mjs';
 import { str } from './validate.mjs';
 import { lockProduct, stockOf, reservedOf } from './inventory.mjs';
@@ -19,7 +19,7 @@ export async function catalogAction(b) {
   return tx(async c => {
     const products = (
       await c.query(
-        'SELECT id,name,deleted_at,reserved_milli FROM products WHERE id=ANY($1::text[]) ORDER BY id FOR UPDATE',
+        'SELECT id,name,deleted_at,reserved_milli,review_status FROM products WHERE id=ANY($1::text[]) ORDER BY id FOR UPDATE',
         [ids]
       )
     ).rows;
@@ -27,6 +27,8 @@ export async function catalogAction(b) {
       throw fail('Some products no longer exist. Refresh the catalog.', 409);
     if (action === 'show' && products.some(p => p.deleted_at))
       throw fail('Deleted products cannot be shown again. Create the product afresh.', 409);
+    if (action === 'show' && products.some(p => p.review_status !== 'Approved'))
+      throw fail('Approve the product in Product review before publishing it.', 409);
     if (action === 'delete') {
       const pending = (
         await c.query(

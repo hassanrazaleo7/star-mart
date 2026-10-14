@@ -1,3 +1,5 @@
+import { activeShift } from './staff-shifts.mjs';
+import { nextDocumentNumber } from './document-number.mjs';
 import { isRemovedCategory } from '../src/grocery-categories.mjs';
 import { db, tx } from './db.mjs';
 import { id, hash } from './auth.mjs';
@@ -26,10 +28,6 @@ export const PICKUP_METHODS = [
   'Bank transfer',
 ];
 export const isGuest = customer => String(customer?.id || '').startsWith('guest-');
-const orderId = () =>
-  'SMO-' + Date.now().toString(36).toUpperCase() + '-' + id().slice(0, 8).toUpperCase();
-const receiptId = () =>
-  'SM-' + Date.now().toString(36).toUpperCase() + '-' + id().slice(0, 8).toUpperCase();
 
 // Reserves stock for signed-in customers (status Pending). Guests get an Inquiry that staff confirm first,
 // so an anonymous caller can never hold inventory. Idempotent per (customer, requestKey).
@@ -161,7 +159,7 @@ export async function placeOrder(customer, b, { clientKey = '' } = {}) {
         lineTotal: lineAmount(x.qty, Number(p.price_paisa)),
       });
     }
-    const order = orderId(),
+    const order = await nextDocumentNumber(c),
       total = items.reduce((n, x) => n + x.lineTotal, 0),
       status = guest ? 'Inquiry' : 'Pending',
       paymentStatus = paymentReference ? 'Reference submitted · unverified' : 'Awaiting collection';
@@ -244,7 +242,9 @@ export async function allOrders({ limit = 1000 } = {}) {
 }
 
 // Actions: Confirm (Inquiry → Pending), Extend, Cancelled, Fulfilled, ClosePickup (fulfil with cash received).
-export async function changeOrder(idValue, action, body = {}, role = 'admin') {
+export async function changeOrder(idValue, action, body = {}, actor = 'admin') {
+  const user = typeof actor === 'string' ? { role: actor, id: actor, name: actor } : actor;
+  const role = user.role;
   const pickup = action === 'ClosePickup';
   if (pickup) action = 'Fulfilled';
   if (!['Fulfilled', 'Cancelled', 'Confirm', 'Extend'].includes(action))
@@ -322,7 +322,8 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
     const verifiedReference = str(body.verifiedReference, 120);
     if (TRANSFER_METHODS.includes(order.payment_method) && !verifiedReference)
       throw fail('Enter the confirmed bank/wallet transaction reference before fulfilling');
-    const receipt = receiptId();
+    const shift = user.role === 'staff' ? await activeShift(c, user.id, true) : null;
+    const receipt = await nextDocumentNumber(c);
     for (const item of items) {
       const p = products.get(item.product_id);
       if (!p) throw fail(item.name + ' no longer exists');
@@ -367,6 +368,12 @@ export async function changeOrder(idValue, action, body = {}, role = 'admin') {
       ]
     );
     if (linked) await awardPoints(c, linked.id, receipt, order.total_paisa);
+    await c.query('UPDATE receipts SET cashier_id=$1,cashier_name=$2,shift_id=$3 WHERE id=$4', [
+      user.id,
+      user.name || 'Owner',
+      shift?.id || null,
+      receipt,
+    ]);
     await c.query(
       "UPDATE customer_orders SET status='Fulfilled',payment_status='Verified · paid',verified_reference=$2,payment_verified_at=NOW(),updated_at=NOW() WHERE id=$1",
       [idValue, verifiedReference]
@@ -400,14 +407,14 @@ const PUBLIC_COLUMNS =
 export async function publicProducts() {
   const d = await db(),
     r = await d.query(
-      `SELECT ${PUBLIC_COLUMNS} FROM products p WHERE p.catalog_status='active' AND p.deleted_at IS NULL ORDER BY p.name`
+      `SELECT ${PUBLIC_COLUMNS} FROM products p WHERE p.catalog_status='active' AND p.review_status='Approved' AND p.deleted_at IS NULL ORDER BY p.name`
     );
   return r.rows.filter(p => !isRemovedCategory(p.category));
 }
 export async function publicProduct(productId) {
   const d = await db(),
     r = await d.query(
-      `SELECT ${PUBLIC_COLUMNS},p.description FROM products p WHERE p.id=$1 AND p.catalog_status='active' AND p.deleted_at IS NULL`,
+      `SELECT ${PUBLIC_COLUMNS},p.description FROM products p WHERE p.id=$1 AND p.catalog_status='active' AND p.review_status='Approved' AND p.deleted_at IS NULL`,
       [productId]
     );
   const p = r.rows[0];

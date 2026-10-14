@@ -1,3 +1,4 @@
+import { activeShift } from './staff-shifts.mjs';
 import { db, tx } from './db.mjs';
 import { id } from './auth.mjs';
 import { paisa } from './money.mjs';
@@ -161,7 +162,7 @@ export async function listCustomers({ search = '', limit = 500 } = {}) {
   );
   return r.rows;
 }
-export async function collectCredit(body) {
+export async function collectCredit(body, user = { role: 'admin', id: 'owner' }) {
   const customerId = str(body.customerId, 120),
     receiptId = str(body.receiptId, 120),
     method = str(body.method, 120),
@@ -195,6 +196,12 @@ export async function collectCredit(body) {
       'INSERT INTO customer_credit_payments(id,customer_id,receipt_id,amount_paisa,method,reference) VALUES($1,$2,$3,$4,$5,$6)',
       [paymentId, customerId, receiptId, amount, method, str(body.reference, 120)]
     );
+    const shift = user.role === 'staff' ? await activeShift(c, user.id, true) : null;
+    await c.query('UPDATE customer_credit_payments SET cashier_id=$1,shift_id=$2 WHERE id=$3', [
+      user.id,
+      shift?.id || null,
+      paymentId,
+    ]);
     if (amount === due) await awardPoints(c, customerId, receiptId, receipt.total_paisa);
     return { id: paymentId, receiptId, amountPaisa: amount, remainingPaisa: due - amount };
   });

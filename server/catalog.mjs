@@ -13,7 +13,7 @@ const CATEGORIES = new Set([...GROCERY_CATEGORIES, ...LEGACY_CATEGORIES]);
 // Fields a vendor may still edit once the store has received or sold the product.
 const VENDOR_EDITABLE_WHEN_STOCKED = ['brand', 'pack_size', 'description'];
 
-export async function saveProduct(b, productId, actor = { role: 'admin' }) {
+export async function saveProduct(b, productId, actor = { role: 'admin' }, client = null) {
   const name = required(b.name, 'Product name'),
     sku = str(b.sku, 80) || null,
     barcode = str(b.barcode, 80) || null,
@@ -28,11 +28,12 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
       ? milli(b.vendorAvailable, 'Vendor available stock')
       : undefined;
   const vendor = actor.role === 'vendor';
+  const needsReview = actor.role !== 'admin';
   const vendorId = vendor ? actor.vendor_id : str(b.vendorId) || null,
-    opening = vendor ? 0 : b.opening === undefined ? 0 : milli(b.opening, 'Opening stock');
+    opening = needsReview ? 0 : b.opening === undefined ? 0 : milli(b.opening, 'Opening stock');
   const category = normalizeCategory(str(b.category));
   if (category && !CATEGORIES.has(category)) throw fail('Choose a grocery category');
-  return tx(async c => {
+  const run = async c => {
     if (vendorId && !(await c.query('SELECT id FROM vendors WHERE id=$1', [vendorId])).rows.length)
       throw fail('Vendor not found');
     const next = {
@@ -59,6 +60,19 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
       if (!old || old.deleted_at) throw fail('Product not found', 404);
       if (vendor && old.vendor_id !== actor.vendor_id)
         throw fail('Product not in your catalog', 403);
+      if (needsReview) {
+        if (actor.role === 'staff' && old.review_status !== 'Approved') {
+          const mine = (
+            await c.query(
+              'SELECT 1 FROM product_submissions WHERE product_id=$1 AND submitted_by=$2',
+              [productId, actor.id]
+            )
+          ).rows.length;
+          if (!mine) throw fail('This draft belongs to another account', 403);
+        }
+        await submitDraft(c, productId, b, actor);
+        return { ...old, review_status: 'Pending', submitted: true };
+      }
       next.image = old.image;
       let proposedPrice = old.vendor_proposed_price_paisa;
       if (vendor) {
@@ -133,13 +147,21 @@ export async function saveProduct(b, productId, actor = { role: 'admin' }) {
           [id(), productId, opening, 'opening', 'Opening stock']
         );
     }
+    if (needsReview) {
+      await c.query(
+        "UPDATE products SET catalog_status='hidden',review_status='Pending' WHERE id=$1",
+        [productId]
+      );
+      await submitDraft(c, productId, b, actor);
+    }
     if (vendorAvailable !== undefined)
       await c.query(
         'UPDATE products SET vendor_available_milli=$1,vendor_availability_updated_at=NOW(),updated_at=NOW() WHERE id=$2',
         [vendorAvailable, productId]
       );
     return (await c.query('SELECT * FROM products WHERE id=$1', [productId])).rows[0];
-  });
+  };
+  return client ? run(client) : tx(run);
 }
 
 // Owner accepts (or rejects) a vendor's proposed selling price.
@@ -168,4 +190,46 @@ export async function storeImage(c, productId, data, mime) {
     productId,
   ]);
   return '/api/images/' + productId + '?v=' + Date.now();
+}
+
+async function submitDraft(c, productId, b, actor) {
+  const payload = {
+    ...b,
+    opening: 0,
+    vendorId: actor.role === 'vendor' ? actor.vendor_id : b.vendorId,
+  };
+  const pending = (
+    await c.query(
+      "SELECT * FROM product_submissions WHERE product_id=$1 AND status='Pending' FOR UPDATE",
+      [productId]
+    )
+  ).rows[0];
+  if (pending && pending.submitted_by !== actor.id)
+    throw fail('Another account already submitted changes. Ask the owner to review first.', 409);
+  if (pending)
+    await c.query('UPDATE product_submissions SET payload=$1,created_at=NOW() WHERE id=$2', [
+      JSON.stringify(payload),
+      pending.id,
+    ]);
+  else {
+    const previous = (
+      await c.query(
+        'SELECT image_data,image_mime FROM product_submissions WHERE product_id=$1 AND submitted_by=$2 ORDER BY created_at DESC LIMIT 1',
+        [productId, actor.id]
+      )
+    ).rows[0];
+    await c.query(
+      'INSERT INTO product_submissions(id,product_id,submitted_by,submitted_name,submitted_role,payload,image_data,image_mime) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+      [
+        id(),
+        productId,
+        actor.id,
+        actor.name || actor.role,
+        actor.role,
+        JSON.stringify(payload),
+        previous?.image_data || null,
+        previous?.image_mime || null,
+      ]
+    );
+  }
 }

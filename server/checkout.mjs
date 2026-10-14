@@ -1,3 +1,5 @@
+import { nextDocumentNumber } from './document-number.mjs';
+import { activeShift } from './staff-shifts.mjs';
 import { tx } from './db.mjs';
 import { id, hash } from './auth.mjs';
 import { paisa, wholeQuantity as milli, lineAmount, allocate } from './money.mjs';
@@ -14,8 +16,6 @@ import {
 } from './config.mjs';
 
 export const POS_PAYMENTS = ['Cash', 'Card', 'Bank transfer', 'Credit'];
-const receiptId = () =>
-  'SM-' + Date.now().toString(36).toUpperCase() + '-' + id().slice(0, 8).toUpperCase();
 
 async function replayReceipt(c, old) {
   const lines = (
@@ -32,6 +32,7 @@ async function replayReceipt(c, old) {
   ).rows[0].n;
   return {
     receipt: old.id,
+    cashier: old.cashier_name,
     subtotal: Number(old.subtotal_paisa),
     discount: Number(old.discount_paisa),
     loyaltyDiscount: (Number(redeemed) / 100) * 5000,
@@ -123,7 +124,8 @@ export async function checkout(b, user = { role: 'admin', id: 'owner' }) {
     const purchased = [];
     for (const x of requested) {
       const p = await lockProduct(c, x.productId);
-      if (!p) throw fail('Product not found');
+      if (!p || p.review_status !== 'Approved')
+        throw fail('This product needs owner approval before it can be sold.', 409);
       if (p.catalog_status === 'archived' || p.deleted_at) throw fail(p.name + ' is archived');
       const available = availableOf(p);
       if (x.qty > available)
@@ -183,7 +185,8 @@ export async function checkout(b, user = { role: 'admin', id: 'owner' }) {
     if (payment !== 'Credit' && received < total) throw fail('Amount received is less than total');
     if (payment === 'Credit' && received > total)
       throw fail('Received amount exceeds credit bill total');
-    const receipt = receiptId();
+    const shift = user.role === 'staff' ? await activeShift(c, user.id, true) : null;
+    const receipt = await nextDocumentNumber(c);
     await c.query(
       'INSERT INTO receipts(id,subtotal_paisa,discount_paisa,tax_paisa,total_paisa,received_paisa,payment,customer,note,customer_id,request_key,request_hash,discount_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
       [
@@ -202,6 +205,12 @@ export async function checkout(b, user = { role: 'admin', id: 'owner' }) {
         discountReason,
       ]
     );
+    await c.query('UPDATE receipts SET cashier_id=$1,cashier_name=$2,shift_id=$3 WHERE id=$4', [
+      user.id,
+      user.name || 'Owner',
+      shift?.id || null,
+      receipt,
+    ]);
     const output = [];
     for (let i = 0; i < purchased.length; i++) {
       const x = purchased[i],
@@ -249,6 +258,7 @@ export async function checkout(b, user = { role: 'admin', id: 'owner' }) {
     }
     return {
       receipt,
+      cashier: user.name || 'Owner',
       subtotal,
       discount,
       loyaltyDiscount,
@@ -273,7 +283,7 @@ export async function addPurchase(b) {
     expiry = validDate(b.expiry, 'expiry date');
   return tx(async c => {
     const p = await lockProduct(c, pid);
-    if (!p || p.deleted_at) throw fail('Product not found', 404);
+    if (!p || p.review_status !== 'Approved' || p.deleted_at) throw fail('Product not found', 404);
     if (p.vendor_id && vendorId !== p.vendor_id)
       throw fail('Purchase vendor must match this product supplier');
     if (vendorId && !(await c.query('SELECT id FROM vendors WHERE id=$1', [vendorId])).rows.length)
@@ -329,7 +339,7 @@ export async function addAdjustment(b) {
     note = required(b.note, 'Explanation', 1000);
   return tx(async c => {
     const p = await lockProduct(c, pid);
-    if (!p || p.deleted_at) throw fail('Product not found', 404);
+    if (!p || p.review_status !== 'Approved' || p.deleted_at) throw fail('Product not found', 404);
     if (stockOf(p) + qty < 0) throw fail('Stock cannot become negative');
     if (stockOf(p) + qty < reservedOf(p))
       throw fail('This stock is reserved by pending customer orders');

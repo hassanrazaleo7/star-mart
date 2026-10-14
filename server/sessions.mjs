@@ -74,7 +74,7 @@ export async function customerSession(req) {
 const ROLE_ERRORS = {
   owner: ['admin', 'Admin access required'],
   worker: ['admin', 'staff', 'Staff access required'],
-  catalog: ['admin', 'vendor', 'Catalog access required'],
+  catalog: ['admin', 'vendor', 'staff', 'Catalog access required'],
   vendor: ['vendor', 'Vendor access required'],
   session: ['admin', 'staff', 'vendor', 'Please sign in'],
 };

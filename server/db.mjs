@@ -82,7 +82,7 @@ export async function tx(fn, actor) {
 }
 
 // Bump SCHEMA_VERSION whenever the DDL below changes; steady-state cold starts then run a single SELECT.
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const TABLES = `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, password_hash TEXT NOT NULL, salt TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS admin_identities (uid TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at TIMESTAMPTZ NOT NULL);
@@ -115,7 +115,18 @@ CREATE INDEX IF NOT EXISTS idx_activity_events_date ON activity_events(created_a
 CREATE TABLE IF NOT EXISTS product_images (product_id TEXT PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,data BYTEA NOT NULL,mime TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS customer_shopping_preferences(customer_id TEXT PRIMARY KEY REFERENCES customer_accounts(id) ON DELETE CASCADE,fulfillment TEXT NOT NULL CHECK(fulfillment IN ('Delivery','Pickup')),phone TEXT NOT NULL,address TEXT NOT NULL DEFAULT '',updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
 
-const COLUMNS = `ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_available_milli BIGINT NOT NULL DEFAULT 0 CHECK(vendor_available_milli>=0);
+const COLUMNS = `CREATE TABLE IF NOT EXISTS document_counters (name TEXT PRIMARY KEY,value BIGINT NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS product_submissions (id TEXT PRIMARY KEY,product_id TEXT NOT NULL REFERENCES products(id),submitted_by TEXT NOT NULL,submitted_name TEXT NOT NULL,submitted_role TEXT NOT NULL,payload JSONB NOT NULL,status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Pending','Approved','Returned')),note TEXT NOT NULL DEFAULT '',reviewed_by TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),reviewed_at TIMESTAMPTZ,image_data BYTEA,image_mime TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS one_pending_product_submission ON product_submissions(product_id) WHERE status='Pending';
+CREATE TABLE IF NOT EXISTS staff_shifts (id TEXT PRIMARY KEY,staff_id TEXT NOT NULL,staff_name TEXT NOT NULL,opening_paisa BIGINT NOT NULL CHECK(opening_paisa>=0),counted_paisa BIGINT,expected_paisa BIGINT,variance_paisa BIGINT,note TEXT NOT NULL DEFAULT '',opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),closed_at TIMESTAMPTZ);
+CREATE UNIQUE INDEX IF NOT EXISTS one_open_staff_shift ON staff_shifts(staff_id) WHERE closed_at IS NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'Approved';
+ALTER TABLE customer_credit_payments ADD COLUMN IF NOT EXISTS cashier_id TEXT;
+ALTER TABLE customer_credit_payments ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES staff_shifts(id);
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS cashier_id TEXT;
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS cashier_name TEXT;
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES staff_shifts(id);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_available_milli BIGINT NOT NULL DEFAULT 0 CHECK(vendor_available_milli>=0);
 ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_availability_updated_at TIMESTAMPTZ;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS catalog_status TEXT NOT NULL DEFAULT 'active' CHECK(catalog_status IN ('active','hidden','archived'));
 ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
@@ -246,6 +257,8 @@ export const AUDITED_TABLES = [
   'customer_credit_payments',
   'store_accounts',
   'loyalty_entries',
+  'product_submissions',
+  'staff_shifts',
 ];
 const TRIGGERS = [
   ...AUDITED_TABLES.map(t => TRIGGER('star_mart_activity', t, 'star_mart_log_change')),
