@@ -1,0 +1,346 @@
+.pe-editor {
+  color: #15251e;
+  font-family: inherit;
+  display: grid;
+  gap: 18px;
+}
+.pe-editor button,
+.pe-editor input,
+.pe-editor select,
+.pe-editor textarea {
+  font: inherit;
+}
+.pe-photo-row {
+  position: relative;
+}
+.pe-editor .pe-photo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  background: #f1f8f4;
+  border: 1px dashed #89bca4;
+  border-radius: 14px;
+  color: #007b53;
+  text-align: left;
+  cursor: pointer;
+  min-height: 100px;
+}
+.pe-photo img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: white;
+  border-radius: 10px;
+}
+.pe-photo span {
+  flex: 1;
+  min-width: 0;
+}
+.pe-photo strong {
+  display: block;
+  font-size: 15px;
+}
+.pe-photo small {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #536b5d;
+}
+.pe-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pe-editor .pe-remove-photo {
+  border: 0;
+  background: none;
+  padding: 8px 0;
+  color: #fc2600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pe-basics,
+.pe-more fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.pe-basics legend {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.pe-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.pe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #172820;
+}
+.pe-field b {
+  color: #fc2600;
+}
+.pe-editor .pe-field input,
+.pe-editor .pe-field select,
+.pe-editor .pe-field textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  border: 1px solid #d5e3da;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+  padding: 11px 12px;
+  font-size: 15px;
+  font-weight: 400;
+  outline: none;
+}
+.pe-field input:focus,
+.pe-field select:focus,
+.pe-field textarea:focus {
+  border-color: #008858;
+  box-shadow: 0 0 0 3px #00885815;
+}
+.pe-editor :disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.pe-stock-note {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #4a6657;
+  margin: 0;
+  background: #f4f8f5;
+  border-radius: 10px;
+  padding: 12px;
+}
+.pe-stock-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.pe-more {
+  border: 1px solid #dce6df;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: white;
+}
+.pe-more summary {
+  cursor: pointer;
+  padding: 15px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #15251e;
+}
+.pe-more summary span {
+  font-size: 12px;
+  font-weight: 400;
+  color: #536b5d;
+  margin-left: 8px;
+}
+.pe-more[open] fieldset {
+  padding: 0 0 16px;
+}
+.pe-more .sm-product-barcode {
+  margin-bottom: 16px;
+}
+.pe-wide {
+  grid-column: 1/-1;
+}
+.pe-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  padding: 16px 0 0;
+  margin-top: 18px;
+  background: white;
+  border-top: 1px solid #e2e9e4;
+}
+.pe-actions button {
+  min-height: 44px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.pe-actions .pe-another {
+  background: #eff7f2;
+  color: #007c52;
+  border: 1px solid #cce2d5;
+}
+.pe-actions .pe-another:hover {
+  background: #e0f0e6;
+}
+.pe-success {
+  border: 1px solid #b5d9c4;
+  background: #edf8f1;
+  border-radius: 12px;
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  color: #007b53;
+  font-weight: 600;
+  font-size: 13px;
+}
+.pe-success button {
+  margin-left: auto;
+  background: white;
+  border: 1px solid #bdd6c7;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #007b53;
+  cursor: pointer;
+}
+.pe-submit-note {
+  font-size: 12px;
+  color: #56695c;
+  margin: 12px 0 0;
+}
+.sm-record-dialog:has(.pe-editor) {
+  max-width: min(700px, calc(100vw - 32px));
+  max-height: 90dvh;
+  overflow: auto;
+  padding: 24px;
+}
+.sm-record-dialog:has(.pe-editor) .modal {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  margin: 0;
+  background: white;
+}
+.vp-dialog:has(.pe-editor) {
+  width: min(700px, calc(100vw - 32px));
+  padding: 24px;
+  background: white;
+}
+.vp-dialog .pe-actions .vp-primary,
+.sm-record-dialog .pe-actions .primary {
+  background: #fc2600;
+  border-color: #fc2600;
+  color: white;
+}
+.vp-dialog .pe-actions .vp-primary:hover,
+.sm-record-dialog .pe-actions .primary:hover {
+  background: #e72100;
+  border-color: #e72100;
+}
+.pe-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+@media (max-width: 600px) {
+  .pe-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .pe-editor {
+    gap: 16px;
+  }
+  .pe-editor .pe-field input,
+  .pe-editor .pe-field select,
+  .pe-editor .pe-field textarea {
+    font-size: 16px;
+    min-height: 48px;
+  }
+  .pe-photo small {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .pe-more summary span {
+    display: block;
+    margin: 4px 0 0 14px;
+  }
+  .pe-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pe-actions .primary,
+  .pe-actions .vp-primary {
+    grid-column: 1/-1;
+    grid-row: 1;
+  }
+  .pe-actions > button:only-child {
+    grid-column: 1/-1;
+  }
+  .sm-record-dialog:has(.pe-editor),
+  .vp-dialog:has(.pe-editor) {
+    width: calc(100vw - 16px);
+    max-width: none;
+    padding: 18px;
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px;
+  }
+  .pe-success {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pe-success button {
+    margin-left: 0;
+  }
+  .pe-stock-note {
+    font-size: 12px;
+  }
+}
+
+/* The record dialog is a Radix portal; explicit product padding overrides old generic !important rules. */
+.sm-record-dialog:has(.pe-editor) {
+  padding: 0 !important;
+  max-width: min(700px, calc(100vw - 24px)) !important;
+  max-height: calc(100dvh - 24px) !important;
+}
+.sm-record-dialog .pe-editor,
+.sm-record-dialog .pe-success {
+  margin: 18px 22px 0;
+}
+.sm-record-dialog .pe-actions {
+  margin: 18px 22px 0;
+  padding-bottom: 18px;
+  flex-shrink: 0;
+}
+.sm-record-dialog:has(.pe-editor) .modal-head {
+  padding: 20px 22px;
+}
+@media (max-width: 600px) {
+  .sm-record-dialog:has(.pe-editor) {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+  .sm-record-dialog .pe-editor,
+  .sm-record-dialog .pe-success {
+    margin: 16px 16px 0;
+  }
+  .sm-record-dialog .pe-actions {
+    margin: 16px 16px 0;
+    padding-bottom: 16px;
+  }
+  .sm-record-dialog:has(.pe-editor) .modal-head {
+    padding: 18px 16px;
+  }
+}

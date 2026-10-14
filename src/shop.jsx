@@ -31,14 +31,20 @@ import {
   ArrowUpRight,
   ArrowRight,
   Tag,
+  Menu,
+  X,
+  Home,
+  Grid2X2,
 } from 'lucide-react';
 import './market.css';
 import './storefront.css';
 import './storefront-hero.css';
 import './storefront-home.css';
+import './mobile-responsive.css';
 
 const PAGE = 30;
 export default function Shop() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]),
     [status, setStatus] = useState('loading'),
     [loadError, setLoadError] = useState(''),
@@ -295,7 +301,21 @@ export default function Shop() {
           <a className="logo" href="/shop">
             <img className="store-logo" src="/logo.png" alt="Star Mart — House of Groceries" />
           </a>
-          <nav className="main-nav" aria-label="Main navigation">
+          <button
+            className="store-menu-toggle"
+            aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+            aria-expanded={menuOpen}
+            aria-controls="store-main-nav"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+          <nav
+            id="store-main-nav"
+            className={'main-nav' + (menuOpen ? ' store-nav-open' : '')}
+            aria-label="Main navigation"
+            onClick={() => setMenuOpen(false)}
+          >
             <a href="/shop">Home</a>
             <a href="#categories">Categories</a>
             <a href="#products">Shop</a>
@@ -647,6 +667,30 @@ export default function Shop() {
           {notice}
         </div>
       )}
+      <nav className="store-mobile-bar" aria-label="Mobile shopping navigation">
+        <a href="/shop">
+          <Home size={20} />
+          <span>Home</span>
+        </a>
+        <a href="#categories">
+          <Grid2X2 size={20} />
+          <span>Categories</span>
+        </a>
+        <button
+          onClick={() => {
+            setError('');
+            setBasketOpen(true);
+          }}
+          aria-label="Open mobile cart"
+        >
+          <ShoppingBag size={20} />
+          <span>Cart{itemCount ? ' (' + itemCount + ')' : ''}</span>
+        </button>
+        <a href={user ? '/account' : '/signup'}>
+          <UserRound size={20} />
+          <span>Account</span>
+        </a>
+      </nav>
       <div className="store-floating-contact">
         <button
           type="button"

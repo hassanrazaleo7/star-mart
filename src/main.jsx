@@ -32,7 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge as UiBadge } from '@/components/ui/badge';
-import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
+import { BarcodeCamera } from './barcode-scanner.jsx';
 import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
 import {
   WorkspaceTabs,
@@ -50,6 +50,8 @@ import AdminCommand from './admin-command.jsx';
 import AdminDate from './admin-date.jsx';
 import DailySales from './daily-sales.jsx';
 import AdminCatalog from './admin-catalog.jsx';
+import ProductEditor from './product-editor.jsx';
+import './mobile-responsive.css';
 import Reports from './reports.jsx';
 import CreditCollection from './components/CreditCollection.jsx';
 import NotFound from './components/NotFound.jsx';
@@ -414,6 +416,9 @@ function RecordField({ field, form, setForm, modal, products, vendors, stock, pr
 }
 
 function App({ portal }) {
+  const productSaveLock = useRef(false);
+  const [productPhoto, setProductPhoto] = useState(null);
+  const [productSuccess, setProductSuccess] = useState('');
   const [mode, setMode] = useState('loading'),
     [password, setPassword] = useState(''),
     [owner, setOwner] = useState(''),
@@ -721,6 +726,8 @@ function App({ portal }) {
     });
   }
   function open(type, item) {
+    setProductPhoto(null);
+    setProductSuccess('');
     setModalError('');
     setModal(type);
     const v = item || model[type] || {};
@@ -745,6 +752,59 @@ function App({ portal }) {
     e.preventDefault();
     const type = modal,
       id = form.id;
+    if (type === 'product') {
+      if (productSaveLock.current) return;
+      const another = e.nativeEvent.submitter?.value === 'another';
+      for (const key of ['opening', 'reorder', 'reorderQty']) {
+        if (
+          form[key] !== undefined &&
+          (!Number.isInteger(Number(form[key])) || Number(form[key]) < 0)
+        ) {
+          setModalError('Stock and alert quantities must be whole numbers: 0, 1, 2…');
+          return;
+        }
+      }
+      productSaveLock.current = true;
+      setBusy(true);
+      setModalError('');
+      let saved;
+      try {
+        saved = await api('/products' + (id ? '/' + seg(id) : ''), {
+          method: id ? 'PUT' : 'POST',
+          body: form,
+        });
+        if (productPhoto)
+          await upload(
+            '/products/' + seg(saved.id) + '/image',
+            await resizeToJpeg(productPhoto),
+            'image/jpeg'
+          );
+        setProductPhoto(null);
+        setProductSuccess(saved.name + ' saved successfully.');
+        flash('Product and photo saved.');
+        if (another) {
+          setForm({
+            ...model.product,
+            category: form.category || '',
+            vendorId: form.vendorId || '',
+          });
+        } else setModal(null);
+        await sync().catch(() => notify.message('Saved. Refresh the list if it does not update.'));
+      } catch (ex) {
+        if (saved) {
+          setForm(prev => ({ ...prev, id: saved.id, opening: 0 }));
+          setModalError(
+            'Product saved, but the photo could not upload. Click Save product to retry the photo; this will not create a duplicate. ' +
+              ex.message
+          );
+          await sync().catch(() => {});
+        } else setModalError(ex.message);
+      } finally {
+        setBusy(false);
+        productSaveLock.current = false;
+      }
+      return;
+    }
     let path = recordPaths[type];
     if (id && (type === 'product' || type === 'vendor')) path += '/' + seg(id);
     const result = await action(path, id ? 'PUT' : 'POST', form, () => setModal(null), {
@@ -1151,6 +1211,13 @@ function App({ portal }) {
           </button>
         </div>
       </aside>
+      {sidebar && (
+        <button
+          className="sm-mobile-backdrop"
+          aria-label="Close menu"
+          onClick={() => setSidebar(false)}
+        />
+      )}
       <div className="work">
         <header className="topbar">
           <div className="top-left">
@@ -1644,6 +1711,13 @@ function App({ portal }) {
               }}
             />
           )}
+          {view === 'products' && productSuccess && !modal && (
+            <div className="pe-success" role="status">
+              <CircleCheck size={18} />
+              {productSuccess}
+              <button onClick={() => open('product')}>Add another product</button>
+            </div>
+          )}
           {view === 'products' && role === 'admin' && (
             <AdminCatalog
               products={data.products}
@@ -1969,10 +2043,25 @@ function App({ portal }) {
                 </button>
               </div>
               {modal === 'product' && (
-                <ProductBarcode
-                  value={form.barcode}
-                  onChange={code => setForm(prev => ({ ...prev, barcode: code }))}
-                />
+                <>
+                  {productSuccess && (
+                    <div className="pe-success" role="status">
+                      <CircleCheck size={18} />
+                      {productSuccess}
+                    </div>
+                  )}
+                  <ProductEditor
+                    form={form}
+                    setForm={setForm}
+                    photo={productPhoto}
+                    setPhoto={setProductPhoto}
+                    vendors={data.vendors}
+                    busy={busy}
+                    storeStock={
+                      form.id ? Math.floor(Number(stock(product(form.id) || form)) / 1000) : 0
+                    }
+                  />
+                </>
               )}
               {modal === 'product' && form.vendor_proposed_price_paisa != null && (
                 <p className="aw-note">
@@ -1980,52 +2069,54 @@ function App({ portal }) {
                   Review it from the product list.
                 </p>
               )}
-              <div className="aw-form-groups">
-                {recordGroups[modal].map(group => {
-                  const groupFields = group.keys
-                    .map(key => fields[modal].find(f => f[0] === key))
-                    .filter(Boolean)
-                    .filter(
-                      ([key]) =>
-                        !(form.id && modal === 'product' && key === 'opening') &&
-                        !(modal === 'purchase' && key === 'paid' && form.payment !== 'Part paid')
+              {modal !== 'product' && (
+                <div className="aw-form-groups">
+                  {recordGroups[modal].map(group => {
+                    const groupFields = group.keys
+                      .map(key => fields[modal].find(f => f[0] === key))
+                      .filter(Boolean)
+                      .filter(
+                        ([key]) =>
+                          !(form.id && modal === 'product' && key === 'opening') &&
+                          !(modal === 'purchase' && key === 'paid' && form.payment !== 'Part paid')
+                      );
+                    const body = (
+                      <div className="modal-fields">
+                        {groupFields.map(field => (
+                          <RecordField
+                            key={field[0]}
+                            field={field}
+                            form={form}
+                            setForm={setForm}
+                            modal={modal}
+                            products={data.products}
+                            vendors={data.vendors}
+                            stock={stock}
+                            product={product}
+                          />
+                        ))}
+                      </div>
                     );
-                  const body = (
-                    <div className="modal-fields">
-                      {groupFields.map(field => (
-                        <RecordField
-                          key={field[0]}
-                          field={field}
-                          form={form}
-                          setForm={setForm}
-                          modal={modal}
-                          products={data.products}
-                          vendors={data.vendors}
-                          stock={stock}
-                          product={product}
-                        />
-                      ))}
-                    </div>
-                  );
-                  return group.extra ? (
-                    <details className="aw-form-group" key={group.title}>
-                      <summary>{group.title}</summary>
-                      {body}
-                    </details>
-                  ) : (
-                    <fieldset className="aw-form-group" key={group.title}>
-                      <legend>{group.title}</legend>
-                      {body}
-                    </fieldset>
-                  );
-                })}
-              </div>
+                    return group.extra ? (
+                      <details className="aw-form-group" key={group.title}>
+                        <summary>{group.title}</summary>
+                        {body}
+                      </details>
+                    ) : (
+                      <fieldset className="aw-form-group" key={group.title}>
+                        <legend>{group.title}</legend>
+                        {body}
+                      </fieldset>
+                    );
+                  })}
+                </div>
+              )}
               {modalError && (
                 <div className="error" role="alert">
                   {modalError}
                 </div>
               )}
-              <div className="modal-foot">
+              <div className={modal === 'product' ? 'pe-actions' : 'modal-foot'}>
                 <button
                   type="button"
                   className="quiet"
@@ -2034,7 +2125,24 @@ function App({ portal }) {
                 >
                   Cancel
                 </button>
-                <button className="primary" disabled={busy}>
+                {modal === 'product' && !form.id && (
+                  <button
+                    className="pe-another"
+                    type="submit"
+                    name="intent"
+                    value="another"
+                    disabled={busy}
+                  >
+                    Save & add another
+                  </button>
+                )}
+                <button
+                  className="primary"
+                  type="submit"
+                  name="intent"
+                  value="save"
+                  disabled={busy}
+                >
                   {busy
                     ? 'Saving…'
                     : {

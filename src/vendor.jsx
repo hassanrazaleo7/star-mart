@@ -1,7 +1,7 @@
-import { BarcodeCamera, ProductBarcode } from './barcode-scanner.jsx';
+import { BarcodeCamera } from './barcode-scanner.jsx';
 import { GROCERY_CATEGORIES } from './grocery-categories.mjs';
 import { PasswordChange } from './account-security.jsx';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Boxes,
   ShoppingBag,
@@ -16,11 +16,12 @@ import {
   Download,
   ArrowUpRight,
   AlertTriangle,
-  ImagePlus,
   X,
   Camera,
 } from 'lucide-react';
 import './vendor.css';
+import ProductEditor from './product-editor.jsx';
+import './mobile-responsive.css';
 import { useLiveRefresh } from './live.js';
 import { get, post, put, seg, upload } from './lib/api.js';
 import { resizeToJpeg } from './lib/image.js';
@@ -32,7 +33,7 @@ const empty = {
   sku: '',
   barcode: '',
   brand: '',
-  category: 'Frozen & Instant Foods',
+  category: '',
   packSize: '',
   unit: 'piece',
   price: '',
@@ -40,6 +41,7 @@ const empty = {
   reorder: 5,
   reorderQty: 10,
   description: '',
+  vendorAvailable: 0,
 };
 const nav = [
   ['overview', 'Overview', Boxes],
@@ -86,6 +88,9 @@ function Table({ heads, children }) {
   );
 }
 export default function VendorPanel({ onLogout }) {
+  const saveLock = useRef(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [savedProduct, setSavedProduct] = useState('');
   const [data, setData] = useState(null),
     [view, setView] = useState('overview'),
     [form, setForm] = useState(null),
@@ -112,6 +117,40 @@ export default function VendorPanel({ onLogout }) {
     load();
   }, []);
   useLiveRefresh(load, 10000);
+  useEffect(() => {
+    if (!form) return;
+    const previous = document.activeElement;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const timer = setTimeout(
+      () => document.querySelector('.vp-dialog input[aria-label="Product name"]')?.focus(),
+      60
+    );
+    const trap = e => {
+      if (e.key !== 'Tab') return;
+      const nodes = [
+        ...document.querySelectorAll(
+          '.vp-dialog button:not(:disabled),.vp-dialog input:not(:disabled),.vp-dialog select:not(:disabled),.vp-dialog textarea:not(:disabled),.vp-dialog summary'
+        ),
+      ].filter(n => n.getClientRects().length);
+      const first = nodes[0],
+        last = nodes.at(-1);
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = before;
+      document.removeEventListener('keydown', trap);
+      previous?.focus();
+    };
+  }, [!!form]);
   useEffect(() => () => stopCamera(), []);
   const products = (data?.products || []).filter(p => !p.deleted_at),
     purchases = data?.purchases || [],
@@ -138,6 +177,7 @@ export default function VendorPanel({ onLogout }) {
     stopCamera();
     setPhoto(null);
     setError('');
+    setSavedProduct('');
     setForm(
       p
         ? {
@@ -157,19 +197,25 @@ export default function VendorPanel({ onLogout }) {
   }
   async function save(e) {
     e.preventDefault();
+    if (saveLock.current) return;
+    const another = e.nativeEvent.submitter?.value === 'another';
+    if (!Number.isInteger(Number(form.vendorAvailable)) || Number(form.vendorAvailable) < 0) {
+      setError('Use a whole stock quantity: 0, 1, 2…');
+      return;
+    }
+    saveLock.current = true;
     setBusy(true);
     setError('');
     let saved;
     try {
       let payload = { ...form };
-      if (!form.id && !payload.sku)
-        payload.sku = 'SM-' + crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase();
       delete payload.id;
       saved = form.id
         ? await put('/products/' + seg(form.id), payload)
         : await post('/products', payload);
       if (photo) await uploadImage(saved.id, photo);
-      setForm(null);
+      setSavedProduct(saved.name + ' saved successfully.');
+      setForm(another ? { ...empty, category: form.category } : null);
       setPhoto(null);
       stopCamera();
       await load();
@@ -183,6 +229,7 @@ export default function VendorPanel({ onLogout }) {
         setError('Product saved, but image failed: ' + e.message + '. Retry to upload it.');
       } else setError(e.message);
     } finally {
+      saveLock.current = false;
       setBusy(false);
     }
   }
@@ -207,7 +254,14 @@ export default function VendorPanel({ onLogout }) {
   const title = nav.find(n => n[0] === view)?.[1];
   return (
     <div className="vp">
-      <aside className="vp-side">
+      <aside className={'vp-side' + (sidebarOpen ? ' vp-side-open' : '')}>
+        <button
+          className="vp-mobile-close"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close vendor menu"
+        >
+          <X size={20} />
+        </button>
         <a className="vp-logo" href="/shop">
           <img src="/logo.png" alt="Star Mart" />
         </a>
@@ -219,6 +273,7 @@ export default function VendorPanel({ onLogout }) {
               className={view === key ? 'active' : ''}
               onClick={() => {
                 setView(key);
+                setSidebarOpen(false);
                 setError('');
               }}
             >
@@ -237,7 +292,21 @@ export default function VendorPanel({ onLogout }) {
           </button>
         </div>
       </aside>
+      {sidebarOpen && (
+        <button
+          className="vp-side-backdrop"
+          aria-label="Close vendor menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <main className="vp-main">
+        <div className="vp-mobile-top">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Open vendor menu">
+            ☰ <span>Menu</span>
+          </button>
+          <img src="/logo.png" alt="Star Mart" />
+          <button onClick={onLogout}>Sign out</button>
+        </div>
         <header>
           <div>
             <small>STAR MART / VENDOR OPERATIONS</small>
@@ -742,15 +811,32 @@ export default function VendorPanel({ onLogout }) {
           </>
         )}
         {form && (
-          <div className="vp-overlay">
-            <form className="vp-dialog" onSubmit={save}>
+          <div
+            className="vp-overlay"
+            onKeyDown={e => {
+              if (e.key === 'Escape' && !busy) {
+                setForm(null);
+                setPhoto(null);
+              }
+            }}
+          >
+            <form
+              className="vp-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vp-product-title"
+              onSubmit={save}
+            >
               <div className="vp-head">
                 <div>
                   <small>YOUR VENDOR CATALOG</small>
-                  <h2>{form.id ? 'Edit grocery product' : 'Add grocery product'}</h2>
+                  <h2 id="vp-product-title">
+                    {form.id ? 'Edit grocery product' : 'Add grocery product'}
+                  </h2>
                 </div>
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => {
                     stopCamera();
                     setForm(null);
@@ -761,101 +847,53 @@ export default function VendorPanel({ onLogout }) {
                   <X />
                 </button>
               </div>
-              <ProductBarcode
-                value={form.barcode}
-                onChange={code => setForm(prev => ({ ...prev, barcode: code }))}
+              {savedProduct && (
+                <div className="pe-success" role="status">
+                  {savedProduct}
+                </div>
+              )}
+              <ProductEditor
+                form={form}
+                setForm={setForm}
+                photo={photo}
+                setPhoto={setPhoto}
+                vendor
+                busy={busy}
               />
-              <label className="vp-photo">
-                <ImagePlus size={28} />
-                <span>
-                  {photo
-                    ? photo.name
-                    : form.image
-                      ? 'Replace product photo'
-                      : 'Upload product photo'}
-                  <small>JPG, PNG or WebP · automatically resized</small>
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={e => setPhoto(e.target.files?.[0] || null)}
-                />
-                {form.image && !photo && <img src={form.image} alt="Current product" />}
-              </label>
-              <div className="vp-fields">
-                {[
-                  ['name', 'Product name'],
-                  ['brand', 'Brand'],
-                  ['packSize', 'Pack size e.g. 500g'],
-                  ['cost', 'Supply cost / unit (Rs)'],
-                  ['price', 'Selling price / unit (Rs)'],
-                  ['vendorAvailable', 'Available stock at your warehouse'],
-                ].map(([k, label]) => (
-                  <label key={k}>
-                    {label}
-                    <input
-                      required={['name', 'cost', 'price'].includes(k)}
-                      type={
-                        ['cost', 'price', 'vendorAvailable', 'reorder', 'reorderQty'].includes(k)
-                          ? 'number'
-                          : 'text'
-                      }
-                      min="0"
-                      step={['cost', 'price'].includes(k) ? '.01' : '1'}
-                      value={form[k] ?? ''}
-                      onChange={e => setForm({ ...form, [k]: e.target.value })}
-                    />
-                  </label>
-                ))}
-                <label>
-                  Category
-                  <select
-                    value={form.category}
-                    onChange={e => setForm({ ...form, category: e.target.value })}
-                  >
-                    {(form.category && !cats.includes(form.category)
-                      ? [...cats, form.category]
-                      : cats
-                    ).map(c => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Unit
-                  <select
-                    value={form.unit || 'piece'}
-                    onChange={e => setForm({ ...form, unit: e.target.value })}
-                  >
-                    {['piece', 'pack', 'box', 'kg', 'litre'].map(u => (
-                      <option key={u}>{u}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="vp-wide">
-                  Description
-                  <textarea
-                    value={form.description || ''}
-                    onChange={e => setForm({ ...form, description: e.target.value })}
-                  />
-                </label>
-              </div>
               {error && <p className="vp-error">{error}</p>}
-              <p className="vp-form-note">
-                Available stock is what you can supply from your warehouse. Store stock increases
-                only when the owner records received goods. Existing packet barcode must be unique
-                across the store.
-                {form.id && Number(form.stock_milli) > 0 && (
-                  <>
-                    {' '}
-                    This product is already stocked at Star Mart, so price, cost, name, barcode and
-                    unit changes are sent to the owner for approval.
-                  </>
+              <div className="pe-actions">
+                <button
+                  type="button"
+                  className="vp-outline"
+                  disabled={busy}
+                  onClick={() => {
+                    setForm(null);
+                    setPhoto(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                {!form.id && (
+                  <button
+                    type="submit"
+                    className="pe-another"
+                    name="intent"
+                    value="another"
+                    disabled={busy}
+                  >
+                    Save & add another
+                  </button>
                 )}
-              </p>
-              <button className="vp-primary" disabled={busy}>
-                {busy ? 'Saving product…' : 'Save product & image'}
-              </button>
+                <button
+                  type="submit"
+                  className="vp-primary"
+                  name="intent"
+                  value="save"
+                  disabled={busy}
+                >
+                  {busy ? 'Saving…' : 'Save product'}
+                </button>
+              </div>
             </form>
           </div>
         )}
